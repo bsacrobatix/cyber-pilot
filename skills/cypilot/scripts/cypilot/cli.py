@@ -162,8 +162,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ]
     all_commands = analysis_commands + kit_commands + migration_commands + search_commands + utility_commands + legacy_aliases
 
-    # Handle --help / -h at top level
-    if argv_list and argv_list[0] in ("-h", "--help"):
+    # Handle --help / -h at top level (or no subcommand)
+    if not argv_list or argv_list[0] in ("-h", "--help"):
         print("usage: cypilot <command> [options]")
         print()
         print("Cypilot CLI - artifact validation and traceability tool")
@@ -194,15 +194,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         print()
         print("Run 'cypilot <command> --help' for command-specific options.")
         return 0
-
-    if not argv_list:
-        print(json.dumps({
-            "status": "ERROR",
-            "message": "Missing subcommand",
-            "analysis_commands": analysis_commands,
-            "search_commands": search_commands,
-        }, indent=None, ensure_ascii=False))
-        return 1
 
     # @cpt-begin:cpt-cypilot-algo-core-infra-route-command:p1:inst-parse-command
     # Backward compatibility: if first arg starts with --, assume validate command
