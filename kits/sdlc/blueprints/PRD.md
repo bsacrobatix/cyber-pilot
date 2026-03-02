@@ -3236,8 +3236,6 @@ headings = ["feature-context-purpose"]  # target heading constraint in FEATURE
 ```
 `@/cpt:id:nfr`
 
-`@/cpt:prompt`
-
 > **`@cpt:rule`** — Rule entry. TOML selects category+section; markdown block becomes the section body in `{cypilot_path}/.gen/kits/sdlc/artifacts/PRD/rules.md`.
 
 `@cpt:rule:requirements-semantic-6`

@@ -1509,7 +1509,6 @@ def migrate_kit(
             if interactive and not dry_run:
                 upd_details = report.get("updated_details", {})
                 skip_details = report.get("skipped_details", {})
-                del_details = report.get("deleted_details", {})
                 sys.stderr.write(f"\n  [{kit_slug}] {bp_name}:\n")
 
                 if text_changed and not report["updated"] and not report.get("inserted"):

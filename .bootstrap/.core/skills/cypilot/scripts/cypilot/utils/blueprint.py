@@ -60,7 +60,7 @@ class ParsedBlueprint:
 _OPEN_RE = re.compile(r"^`@cpt:(\w[\w-]*)(?::(\w[\w-]*))?` *$")
 _CLOSE_RE = re.compile(r"^`@/cpt:(\w[\w-]*)(?::(\w[\w-]*))?` *$")
 
-_SINGLETON_MARKERS = frozenset({"blueprint", "skill", "system-prompt", "rules", "checklist"})
+_SINGLETON_MARKERS = frozenset({"blueprint", "skill", "system-prompt", "sysprompt", "rules", "checklist"})
 
 # Regex for fenced code blocks inside marker content (3+ backticks)
 _FENCE_OPEN_RE = re.compile(r"^(`{3,})(\w+)\s*$")
@@ -123,9 +123,10 @@ def parse_blueprint(path: Path) -> ParsedBlueprint:
 
         # @cpt-begin:cpt-cypilot-algo-blueprint-system-parse-blueprint:p1:inst-if-unclosed
         if not found_close:
+            tag = f"{marker_type}:{explicit_id}" if explicit_id else marker_type
             result.errors.append(
-                f"{path}:{open_line}: unclosed marker `@cpt:{marker_type}` — "
-                f"expected `@/cpt:{marker_type}` before end of file"
+                f"{path}:{open_line}: unclosed marker `@cpt:{tag}` — "
+                f"expected `@/cpt:{tag}` before end of file"
             )
             i += 1
             continue
@@ -362,10 +363,10 @@ def _collect_skill_blocks(bp: ParsedBlueprint) -> str:
 
 
 def _collect_sysprompt_blocks(bp: ParsedBlueprint) -> str:
-    """Extract markdown content from @cpt:sysprompt markers."""
+    """Extract markdown content from @cpt:system-prompt / @cpt:sysprompt markers."""
     parts: List[str] = []
     for mk in bp.markers:
-        if mk.marker_type == "sysprompt" and mk.markdown_content.strip():
+        if mk.marker_type in ("system-prompt", "sysprompt") and mk.markdown_content.strip():
             parts.append(mk.markdown_content.strip())
     return "\n\n".join(parts)
 

@@ -31,6 +31,30 @@ from typing import Any, Dict, List, Optional, Tuple
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 _FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 
+
+def _fence_update(
+    line: str, state: Optional[Tuple[str, int]],
+) -> Optional[Tuple[str, int]]:
+    """Update fence tracking state.
+
+    A closing fence must use the same character and be at least as long
+    as the opener (CommonMark §4.5).
+
+    Returns:
+        None when outside a fence, ``(char, length)`` when inside.
+    """
+    m = _FENCE_RE.match(line.strip())
+    if not m:
+        return state
+    opener = m.group(1)
+    char, length = opener[0], len(opener)
+    if state is None:
+        return (char, length)
+    if char == state[0] and length >= state[1]:
+        return None
+    return state
+
+
 TOC_MARKER_START = "<!-- toc -->"
 TOC_MARKER_END = "<!-- /toc -->"
 
@@ -88,15 +112,16 @@ def parse_headings(
         skip_toc_heading: If True, skip headings named "Table of Contents" or "TOC".
     """
     headings: List[Tuple[int, str]] = []
-    in_fence = False
+    fence: Optional[Tuple[str, int]] = None
     first_skipped = False
 
     for line in lines:
         # Track fenced code blocks (``` or ~~~ with 3+ chars)
-        if _FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        new_fence = _fence_update(line, fence)
+        if new_fence != fence:
+            fence = new_fence
             continue
-        if in_fence:
+        if fence is not None:
             continue
 
         m = _HEADING_RE.match(line)
@@ -194,12 +219,13 @@ def _next_heading_or_separator(
     lines: List[str], start: int,
 ) -> Optional[int]:
     """Return index of next heading or ``---`` separator, skipping fenced blocks."""
-    in_fence = False
+    fence: Optional[Tuple[str, int]] = None
     for j in range(start, len(lines)):
-        if _FENCE_RE.match(lines[j].strip()):
-            in_fence = not in_fence
+        new_fence = _fence_update(lines[j], fence)
+        if new_fence != fence:
+            fence = new_fence
             continue
-        if in_fence:
+        if fence is not None:
             continue
         if re.match(r"^#{1,6}\s", lines[j]) or lines[j].strip() == "---":
             return j
@@ -260,12 +286,13 @@ def insert_toc_markers(
     else:
         # Insert after first H1, or at position 0
         insert_pos = 0
-        in_fence = False
+        fence: Optional[Tuple[str, int]] = None
         for i, line in enumerate(lines):
-            if _FENCE_RE.match(line.strip()):
-                in_fence = not in_fence
+            new_fence = _fence_update(line, fence)
+            if new_fence != fence:
+                fence = new_fence
                 continue
-            if in_fence:
+            if fence is not None:
                 continue
             m = _HEADING_RE.match(line)
             if m and len(m.group(1)) == 1:
@@ -320,12 +347,13 @@ def insert_toc_heading(
 
     # --- Try replacing an existing ToC section ---
     toc_start = toc_end = None
-    in_fence = False
+    fence: Optional[Tuple[str, int]] = None
     for i, line in enumerate(lines):
-        if _FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        new_fence = _fence_update(line, fence)
+        if new_fence != fence:
+            fence = new_fence
             continue
-        if in_fence:
+        if fence is not None:
             continue
         if re.match(r"^##\s+Table of Contents\s*$", line):
             toc_start = i
@@ -362,12 +390,13 @@ def insert_toc_heading(
             return f"{before}\n\n{toc_section}\n\n{after}"
 
     # No --- found: insert after first heading + metadata block
-    in_fence_fb = False
+    fence_fb: Optional[Tuple[str, int]] = None
     for j in range(i, len(lines)):
-        if _FENCE_RE.match(lines[j].strip()):
-            in_fence_fb = not in_fence_fb
+        new_fence = _fence_update(lines[j], fence_fb)
+        if new_fence != fence_fb:
+            fence_fb = new_fence
             continue
-        if in_fence_fb:
+        if fence_fb is not None:
             continue
         if re.match(r"^#{1,6}\s", lines[j]):
             k = j + 1
@@ -402,13 +431,14 @@ def _strip_manual_toc(content: str) -> Tuple[str, bool]:
     # or will be inserted (i.e., always strip manual TOC for marker-based flow).
     toc_heading_start = None
     toc_heading_end = None
-    in_fence = False
+    fence: Optional[Tuple[str, int]] = None
 
     for i, line in enumerate(lines):
-        if _FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        new_fence = _fence_update(line, fence)
+        if new_fence != fence:
+            fence = new_fence
             continue
-        if in_fence:
+        if fence is not None:
             continue
 
         # Skip lines inside <!-- toc --> markers — those are ours
@@ -510,12 +540,13 @@ def _find_toc_section(
     Line indices are 0-based and inclusive/exclusive (``lines[start:end]``).
     """
     # Try heading-based first
-    in_fence = False
+    fence: Optional[Tuple[str, int]] = None
     for i, line in enumerate(lines):
-        if _FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        new_fence = _fence_update(line, fence)
+        if new_fence != fence:
+            fence = new_fence
             continue
-        if in_fence:
+        if fence is not None:
             continue
         if re.match(r"^##\s+Table of Contents\s*$", line):
             # Find end: next heading or --- separator (fence-aware)
@@ -700,12 +731,13 @@ def validate_toc(
 
 def _find_heading_line(lines: List[str], heading_text: str) -> int:
     """Find the 1-based line number of a heading by its text."""
-    in_fence = False
+    fence: Optional[Tuple[str, int]] = None
     for i, line in enumerate(lines):
-        if _FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        new_fence = _fence_update(line, fence)
+        if new_fence != fence:
+            fence = new_fence
             continue
-        if in_fence:
+        if fence is not None:
             continue
         m = _HEADING_RE.match(line)
         if m and m.group(2).strip() == heading_text:
