@@ -331,7 +331,7 @@ def cmd_update(argv: List[str]) -> int:
     if warnings:
         update_result["warnings"] = warnings
 
-    ui.result(update_result, human_fn=lambda d: _human_update_ok(d, errors, warnings))
+    ui.result(update_result, human_fn=_human_update_ok)
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-return-report
     return 0
 
@@ -530,13 +530,11 @@ def _show_core_whatsnew(
 # Human-friendly formatter
 # ---------------------------------------------------------------------------
 
-def _human_update_ok(
-    data: Dict[str, Any],
-    errors: List[Dict[str, str]],
-    warnings: List[str],
-) -> None:
+def _human_update_ok(data: Dict[str, Any]) -> None:
     dry = data.get("dry_run", False)
     status = data.get("status", "")
+    errors = data.get("errors", [])
+    warnings = data.get("warnings", [])
     prefix = "[dry-run] " if dry else ""
 
     ui.header(f"{prefix}Cypilot Update")
@@ -545,11 +543,6 @@ def _human_update_ok(
 
     actions = data.get("actions", {})
     if actions:
-        # Core directories
-        core_keys = [k for k in actions if k.startswith((".core", "core_")) or k in ("core",)]
-        kit_keys = [k for k in actions if k.startswith("kit_") or k.startswith("kits")]
-        other_keys = [k for k in actions if k not in core_keys and k not in kit_keys]
-
         # Summarize file actions
         created = [k for k, v in actions.items() if v == "created"]
         updated = [k for k, v in actions.items() if v == "updated"]

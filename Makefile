@@ -125,31 +125,7 @@ update:
 
 # Validate core methodology spec
 validate:
-	$(CPT) validate
-
-validate-code:
-	$(CPT) validate-code
-
-# Validate specific feature
-validate-feature:
-	@if [ -z "$(FEATURE)" ]; then \
-		echo "Error: FEATURE parameter required"; \
-		echo "Usage: make validate-feature FEATURE=feature-name"; \
-		exit 1; \
-	fi
-	@echo "Validating feature: $(FEATURE)..."
-	@$(CPT) validate \
-		--artifact architecture/features/$(FEATURE)/DESIGN.md
-
-# Validate code traceability for specific feature
-validate-code-feature:
-	@if [ -z "$(FEATURE)" ]; then \
-		echo "Error: FEATURE parameter required"; \
-		echo "Usage: make validate-code-feature FEATURE=feature-name"; \
-		exit 1; \
-	fi
-	@echo "Validating code traceability for feature: $(FEATURE)..."
-	@$(CPT) validate --artifact architecture/features/$(FEATURE)
+	$(CPT) validate --json
 
 # Validate SDLC examples against templates
 self-check:

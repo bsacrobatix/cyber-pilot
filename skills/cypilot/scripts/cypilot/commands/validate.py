@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -816,22 +815,19 @@ def _human_validate(data: dict) -> None:
 
 def _issue_location(issue: dict) -> str:
     """Extract display location from an issue dict, relative to cwd."""
-    loc = str(issue.get("location", ""))
+    loc = str(issue.get("location") or "")
     if not loc:
-        path = str(issue.get("path", ""))
+        path = str(issue.get("path") or "")
         line = issue.get("line", "")
         if path:
             loc = f"{path}:{line}" if line else path
     if not loc:
         return ""
-    try:
-        if ":" in loc:
-            parts = loc.rsplit(":", 1)
-            if parts[1].isdigit():
-                return f"{os.path.relpath(parts[0])}:{parts[1]}"
-        return os.path.relpath(loc)
-    except ValueError:
-        return loc
+    if ":" in loc:
+        parts = loc.rsplit(":", 1)
+        if parts[1].isdigit():
+            return f"{ui.relpath(parts[0])}:{parts[1]}"
+    return ui.relpath(loc)
 
 
 def _format_issue(issue: object, *, is_error: bool) -> None:
@@ -873,14 +869,17 @@ def _format_issue(issue: object, *, is_error: bool) -> None:
             ui.substep(f"  \u25b8 {msg}")
 
     # Structured fields: reasons, fixing_prompt
+    has_extra = False
     reasons = issue.get("reasons")
     if isinstance(reasons, list) and reasons:
         for r in reasons:
             ui.substep(f"    \u2192 {r}")
+        has_extra = True
 
     fixing = issue.get("fixing_prompt")
     if fixing:
         ui.substep(f"    Fix: {fixing}")
+        has_extra = True
 
     # Auto-format ALL remaining keys so nothing is ever lost
     _HANDLED_KEYS = {
@@ -894,5 +893,7 @@ def _format_issue(issue: object, *, is_error: bool) -> None:
             ui.substep(f"    {k}: {', '.join(str(x) for x in v)}")
         else:
             ui.substep(f"    {k}: {v}")
+        has_extra = True
 
-    ui.blank()
+    if has_extra:
+        ui.blank()

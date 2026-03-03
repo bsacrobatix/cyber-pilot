@@ -52,10 +52,9 @@ def _target_path_from_root(target: Path, project_root: Path, cypilot_root: Optio
         rel = target.relative_to(project_root).as_posix()
         return "{cypilot_path}/" + rel if cypilot_root is None else f"@/{rel}"
     except ValueError:
-        print(
+        sys.stderr.write(
             f"WARNING: path {target} is outside project root {project_root}, "
-            "agent proxy will contain an absolute path",
-            file=sys.stderr,
+            "agent proxy will contain an absolute path\n"
         )
         return target.as_posix()
 
@@ -1192,13 +1191,13 @@ def _human_generate_agents_preview(
 
         ui.step(f"{agent_name}:")
         for path in created_wf:
-            ui.file_action(path, "create")
+            ui.file_action(path, "created")
         for path in updated_wf:
-            ui.file_action(path, "update")
+            ui.file_action(path, "updated")
         for path in created_sk:
-            ui.file_action(path, "create")
+            ui.file_action(path, "created")
         for path in updated_sk:
-            ui.file_action(path, "update")
+            ui.file_action(path, "updated")
     ui.blank()
 
 

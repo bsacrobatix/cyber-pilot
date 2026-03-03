@@ -231,6 +231,18 @@ def result(
 
 
 # ---------------------------------------------------------------------------
+# Path helpers
+# ---------------------------------------------------------------------------
+
+def relpath(path: str) -> str:
+    """Return *path* relative to cwd, falling back to the original on error."""
+    try:
+        return os.path.relpath(path)
+    except ValueError:
+        return path
+
+
+# ---------------------------------------------------------------------------
 # Convenience singleton
 # ---------------------------------------------------------------------------
 
@@ -251,6 +263,7 @@ class _UI:
     file_action = staticmethod(file_action)
     result = staticmethod(result)
     is_json = staticmethod(is_json_mode)
+    relpath = staticmethod(relpath)
 
 
 ui = _UI()

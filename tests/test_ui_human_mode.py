@@ -1029,8 +1029,6 @@ class TestHumanUpdateOk(_HumanModeBase):
         with redirect_stderr(buf):
             _human_update_ok(
                 {"status": "PASS", "dry_run": False},
-                errors=[],
-                warnings=[],
             )
         out = buf.getvalue()
         self.assertIn("Update complete", out)
@@ -1041,8 +1039,6 @@ class TestHumanUpdateOk(_HumanModeBase):
         with redirect_stderr(buf):
             _human_update_ok(
                 {"status": "PASS", "dry_run": True},
-                errors=[],
-                warnings=[],
             )
         self.assertIn("Dry run complete", buf.getvalue())
 
@@ -1050,14 +1046,14 @@ class TestHumanUpdateOk(_HumanModeBase):
         from cypilot.commands.update import _human_update_ok
         buf = io.StringIO()
         with redirect_stderr(buf):
-            _human_update_ok(
-                {"status": "WARN", "dry_run": False},
-                errors=[
+            _human_update_ok({
+                "status": "WARN", "dry_run": False,
+                "errors": [
                     {"path": "sdlc", "error": "some issue"},
                     "plain error",
                 ],
-                warnings=["kit drift detected"],
-            )
+                "warnings": ["kit drift detected"],
+            })
         out = buf.getvalue()
         self.assertIn("sdlc", out)
         self.assertIn("some issue", out)
@@ -1071,10 +1067,671 @@ class TestHumanUpdateOk(_HumanModeBase):
         with redirect_stderr(buf):
             _human_update_ok(
                 {"status": "WARN", "dry_run": False},
-                errors=[],
-                warnings=[],
             )
         self.assertIn("warnings", buf.getvalue())
+
+
+class TestHumanWhereDefined(_HumanModeBase):
+    """Test _human_where_defined formatter."""
+
+    def test_found(self):
+        from cypilot.commands.where_defined import _human_where_defined
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_where_defined({
+                "status": "FOUND",
+                "id": "cpt-test-id",
+                "artifacts_scanned": 5,
+                "count": 1,
+                "definitions": [
+                    {"artifact": "/tmp/DESIGN.md", "artifact_type": "DESIGN", "line": 42, "kind": None, "checked": True},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("cpt-test-id", out)
+        self.assertIn("DESIGN", out)
+        self.assertIn("42", out)
+
+    def test_not_found(self):
+        from cypilot.commands.where_defined import _human_where_defined
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_where_defined({
+                "status": "NOT_FOUND",
+                "id": "cpt-missing",
+                "artifacts_scanned": 3,
+                "count": 0,
+                "definitions": [],
+            })
+        out = buf.getvalue()
+        self.assertIn("not found", out.lower())
+
+    def test_ambiguous(self):
+        from cypilot.commands.where_defined import _human_where_defined
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_where_defined({
+                "status": "AMBIGUOUS",
+                "id": "cpt-dup",
+                "artifacts_scanned": 2,
+                "count": 2,
+                "definitions": [
+                    {"artifact": "/tmp/A.md", "artifact_type": "DESIGN", "line": 1, "kind": None, "checked": False},
+                    {"artifact": "/tmp/B.md", "artifact_type": "FEATURE", "line": 5, "kind": None, "checked": False},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("Ambiguous", out)
+
+
+class TestHumanWhereUsed(_HumanModeBase):
+    """Test _human_where_used formatter."""
+
+    def test_found(self):
+        from cypilot.commands.where_used import _human_where_used
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_where_used({
+                "id": "cpt-test-id",
+                "artifacts_scanned": 5,
+                "count": 2,
+                "references": [
+                    {"artifact": "/tmp/DESIGN.md", "artifact_type": "DESIGN", "line": 10, "type": "reference", "checked": True},
+                    {"artifact": "/tmp/FEATURE.md", "artifact_type": "FEATURE", "line": 20, "type": "scope", "checked": False},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("cpt-test-id", out)
+        self.assertIn("DESIGN", out)
+        self.assertIn("reference", out)
+
+    def test_no_refs(self):
+        from cypilot.commands.where_used import _human_where_used
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_where_used({
+                "id": "cpt-missing",
+                "artifacts_scanned": 3,
+                "count": 0,
+                "references": [],
+            })
+        out = buf.getvalue()
+        self.assertIn("No references", out)
+
+
+class TestHumanSpecCoverageFiles(_HumanModeBase):
+    """Test _human_spec_coverage with per-file details."""
+
+    def test_with_files(self):
+        from cypilot.commands.spec_coverage import _human_spec_coverage
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_spec_coverage({
+                "status": "PASS",
+                "summary": {
+                    "covered_files": 2,
+                    "total_files": 3,
+                    "coverage_pct": 66.7,
+                    "granularity_score": 0.5,
+                },
+                "files": {
+                    "src/foo.py": {"total_lines": 100, "covered_lines": 80, "coverage_pct": 80.0},
+                    "src/bar.py": {"total_lines": 50, "covered_lines": 30, "coverage_pct": 60.0},
+                    "src/empty.py": {"total_lines": 10, "covered_lines": 0, "coverage_pct": 0.0},
+                },
+            })
+        out = buf.getvalue()
+        self.assertIn("Covered files (2)", out)
+        self.assertIn("src/foo.py", out)
+        self.assertIn("Uncovered files (1)", out)
+        self.assertIn("src/empty.py", out)
+
+
+class TestHumanGetContent(_HumanModeBase):
+    """Test _human_get_content formatter."""
+
+    def test_found_with_text(self):
+        from cypilot.commands.get_content import _human_get_content
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_get_content({
+                "status": "FOUND",
+                "id": "cpt-test-id",
+                "artifact": "/tmp/DESIGN.md",
+                "kind": "DESIGN",
+                "system": "TestSys",
+                "start_line": 10,
+                "end_line": 20,
+                "traceability": "FULL",
+                "text": "Hello world\nSecond line",
+            })
+        out = buf.getvalue()
+        self.assertIn("cpt-test-id", out)
+        self.assertIn("DESIGN", out)
+        self.assertIn("TestSys", out)
+        self.assertIn("10-20", out)
+        self.assertIn("FULL", out)
+        self.assertIn("Hello world", out)
+
+    def test_not_found(self):
+        from cypilot.commands.get_content import _human_get_content
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_get_content({
+                "status": "NOT_FOUND",
+                "id": "cpt-missing",
+                "inst": "some-inst",
+            })
+        out = buf.getvalue()
+        self.assertIn("not found", out.lower())
+        self.assertIn("some-inst", out)
+
+    def test_error(self):
+        from cypilot.commands.get_content import _human_get_content
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_get_content({
+                "status": "ERROR",
+                "id": "cpt-err",
+                "message": "Something broke",
+            })
+        out = buf.getvalue()
+        self.assertIn("Something broke", out)
+
+    def test_found_minimal(self):
+        from cypilot.commands.get_content import _human_get_content
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_get_content({
+                "status": "FOUND",
+                "id": "cpt-x",
+            })
+        out = buf.getvalue()
+        self.assertIn("cpt-x", out)
+
+
+class TestHumanListIds(_HumanModeBase):
+    """Test _human_list_ids formatter."""
+
+    def test_with_ids(self):
+        from cypilot.commands.list_ids import _human_list_ids
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_list_ids({
+                "count": 2,
+                "artifacts_scanned": 3,
+                "code_files_scanned": 5,
+                "ids": [
+                    {"id": "cpt-test-flow-auth", "kind": "flow", "type": "definition", "artifact": "/tmp/D.md", "artifact_type": "DESIGN", "line": 10, "checked": True},
+                    {"id": "cpt-test-dod-login", "kind": "dod", "type": "reference", "artifact": "/tmp/F.md", "artifact_type": "FEATURE", "line": 20, "checked": False},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("cpt-test-flow-auth", out)
+        self.assertIn("flow", out)
+        self.assertIn("dod", out)
+
+    def test_no_ids(self):
+        from cypilot.commands.list_ids import _human_list_ids
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_list_ids({
+                "count": 0,
+                "artifacts_scanned": 3,
+                "ids": [],
+            })
+        out = buf.getvalue()
+        self.assertIn("No IDs found", out)
+
+
+class TestHumanListIdKinds(_HumanModeBase):
+    """Test _human_list_id_kinds formatter."""
+
+    def test_with_kinds(self):
+        from cypilot.commands.list_id_kinds import _human_list_id_kinds
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_list_id_kinds({
+                "artifacts_scanned": 5,
+                "kinds": ["flow", "dod", "usecase"],
+                "kind_counts": {"flow": 10, "dod": 5, "usecase": 3},
+                "kind_to_templates": {"flow": ["DESIGN"], "dod": ["FEATURE"], "usecase": ["DESIGN", "FEATURE"]},
+                "template_to_kinds": {"DESIGN": ["flow", "usecase"], "FEATURE": ["dod", "usecase"]},
+            })
+        out = buf.getvalue()
+        self.assertIn("flow", out)
+        self.assertIn("dod", out)
+        self.assertIn("DESIGN", out)
+
+    def test_no_kinds(self):
+        from cypilot.commands.list_id_kinds import _human_list_id_kinds
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_list_id_kinds({
+                "artifacts_scanned": 2,
+                "kinds": [],
+                "kind_counts": {},
+            })
+        out = buf.getvalue()
+        self.assertIn("No ID kinds", out)
+
+    def test_with_artifact(self):
+        from cypilot.commands.list_id_kinds import _human_list_id_kinds
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_list_id_kinds({
+                "artifact": "DESIGN.md",
+                "artifact_type": "DESIGN",
+                "kinds": ["flow"],
+                "kind_counts": {"flow": 3},
+            })
+        out = buf.getvalue()
+        self.assertIn("DESIGN.md", out)
+        self.assertIn("DESIGN", out)
+
+
+class TestHumanValidateKitsDetailed(_HumanModeBase):
+    """Test _human_validate_kits with error branches."""
+
+    def test_verbose_with_errors(self):
+        from cypilot.commands.validate_kits import _human_validate_kits
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_validate_kits({
+                "status": "FAIL",
+                "kits_validated": 2,
+                "error_count": 3,
+                "kits": [
+                    {"kit": "sdlc", "status": "PASS", "kinds": ["DESIGN", "FEATURE"]},
+                    {"kit": "bad", "status": "FAIL", "error_count": 3, "errors": [
+                        {"message": "missing field"},
+                        "plain error str",
+                    ]},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("sdlc: PASS", out)
+        self.assertIn("bad: FAIL", out)
+        self.assertIn("missing field", out)
+
+    def test_non_verbose_failed_kits(self):
+        from cypilot.commands.validate_kits import _human_validate_kits
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_validate_kits({
+                "status": "FAIL",
+                "kits_validated": 1,
+                "error_count": 5,
+                "failed_kits": [{"kit": "bad-kit", "error_count": 5}],
+                "errors": [
+                    {"message": "err1", "path": "file.md"},
+                    {"message": "err2"},
+                    "string error",
+                ],
+                "errors_truncated": 2,
+            })
+        out = buf.getvalue()
+        self.assertIn("bad-kit", out)
+        self.assertIn("file.md", out)
+        self.assertIn("err1", out)
+        self.assertIn("2 more error", out)
+
+
+class TestHumanKitInstall(_HumanModeBase):
+    """Test _human_kit_install formatter."""
+
+    def test_pass(self):
+        from cypilot.commands.kit import _human_kit_install
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_install({
+                "status": "PASS",
+                "kit": "sdlc",
+                "version": "1",
+                "action": "installed",
+                "files_written": 25,
+                "artifact_kinds": ["DESIGN", "FEATURE", "PRD"],
+            })
+        out = buf.getvalue()
+        self.assertIn("sdlc", out)
+        self.assertIn("installed", out)
+        self.assertIn("25", out)
+        self.assertIn("DESIGN", out)
+
+    def test_dry_run(self):
+        from cypilot.commands.kit import _human_kit_install
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_install({
+                "status": "DRY_RUN",
+                "kit": "sdlc",
+                "version": "1",
+                "action": "would install",
+                "source": "/tmp/src",
+                "reference": "/tmp/ref",
+                "blueprints": "/tmp/bp",
+            })
+        out = buf.getvalue()
+        self.assertIn("Dry run", out)
+        self.assertIn("/tmp/src", out)
+
+    def test_fail(self):
+        from cypilot.commands.kit import _human_kit_install
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_install({
+                "status": "FAIL",
+                "kit": "bad",
+                "version": "?",
+                "action": "failed",
+                "files_written": 0,
+                "message": "missing conf.toml",
+                "hint": "Check source dir",
+                "errors": ["parse error"],
+            })
+        out = buf.getvalue()
+        self.assertIn("missing conf.toml", out)
+        self.assertIn("Check source dir", out)
+        self.assertIn("parse error", out)
+
+    def test_other_status(self):
+        from cypilot.commands.kit import _human_kit_install
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_install({
+                "status": "PARTIAL",
+                "kit": "x",
+                "version": "1",
+                "files_written": 0,
+            })
+        self.assertIn("PARTIAL", buf.getvalue())
+
+
+class TestHumanKitUpdate(_HumanModeBase):
+    """Test _human_kit_update formatter."""
+
+    def test_pass(self):
+        from cypilot.commands.kit import _human_kit_update
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_update({
+                "status": "PASS",
+                "kits_updated": 1,
+                "results": [
+                    {"kit": "sdlc", "action": "current", "files_written": 25, "artifact_kinds": ["DESIGN"]},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("sdlc", out)
+        self.assertIn("25 files", out)
+        self.assertIn("DESIGN", out)
+
+    def test_warn_with_errors(self):
+        from cypilot.commands.kit import _human_kit_update
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_update({
+                "status": "WARN",
+                "kits_updated": 1,
+                "results": [{"kit": "sdlc", "action": "updated"}],
+                "errors": ["some regen error"],
+            })
+        out = buf.getvalue()
+        self.assertIn("some regen error", out)
+        self.assertIn("warnings", out.lower())
+
+    def test_other_status(self):
+        from cypilot.commands.kit import _human_kit_update
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_update({"status": "PARTIAL", "kits_updated": 0, "results": []})
+        self.assertIn("PARTIAL", buf.getvalue())
+
+
+class TestHumanGenerateResources(_HumanModeBase):
+    """Test _human_generate_resources formatter."""
+
+    def test_pass(self):
+        from cypilot.commands.kit import _human_generate_resources
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_generate_resources({
+                "status": "PASS",
+                "kits_processed": 1,
+                "results": [
+                    {"kit": "sdlc", "files_written": 25, "artifact_kinds": ["DESIGN", "PRD"]},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("sdlc", out)
+        self.assertIn("25 files", out)
+        self.assertIn("DESIGN", out)
+
+    def test_warn_with_errors(self):
+        from cypilot.commands.kit import _human_generate_resources
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_generate_resources({
+                "status": "WARN",
+                "kits_processed": 1,
+                "results": [],
+                "errors": ["blueprint parse error"],
+            })
+        out = buf.getvalue()
+        self.assertIn("blueprint parse error", out)
+        self.assertIn("warnings", out.lower())
+
+    def test_other_status(self):
+        from cypilot.commands.kit import _human_generate_resources
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_generate_resources({"status": "UNKNOWN", "kits_processed": 0, "results": []})
+        self.assertIn("UNKNOWN", buf.getvalue())
+
+
+class TestHumanKitMigrate(_HumanModeBase):
+    """Test _human_kit_migrate formatter."""
+
+    def test_migrated(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "PASS",
+                "kits_migrated": 1,
+                "kits_current": 0,
+                "results": [
+                    {
+                        "kit": "sdlc",
+                        "status": "migrated",
+                        "from_version": 1,
+                        "to_version": 2,
+                        "regenerated": {"files_written": 25, "workflows_written": 3},
+                        "merged_blueprints": [
+                            {"blueprint": "DESIGN.md", "accepted": 5, "declined": 1, "inserted": 2, "deleted": 0},
+                        ],
+                    },
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("sdlc", out)
+        self.assertIn("migrated", out)
+        self.assertIn("v1", out)
+        self.assertIn("v2", out)
+        self.assertIn("25 files", out)
+        self.assertIn("DESIGN.md", out)
+        self.assertIn("5 accepted", out)
+
+    def test_current(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "PASS",
+                "kits_migrated": 0,
+                "kits_current": 1,
+                "results": [
+                    {"kit": "sdlc", "status": "current", "from_version": 1, "to_version": 1},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("already current", out)
+
+    def test_aborted(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "ABORTED",
+                "kits_migrated": 0,
+                "kits_current": 0,
+                "kits_aborted": 1,
+                "results": [
+                    {"kit": "sdlc", "status": "aborted", "from_version": 1, "to_version": 2},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("aborted", out.lower())
+
+    def test_fail(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "FAIL",
+                "kits_migrated": 0,
+                "kits_current": 0,
+                "results": [
+                    {"kit": "bad", "status": "FAIL", "message": "corrupt blueprint"},
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("FAILED", out)
+        self.assertIn("corrupt blueprint", out)
+        self.assertIn("failed", out.lower())
+
+    def test_dry_run(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "PASS",
+                "dry_run": True,
+                "kits_migrated": 0,
+                "kits_current": 1,
+                "results": [],
+            })
+        out = buf.getvalue()
+        self.assertIn("dry run", out.lower())
+
+    def test_regen_error(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "PASS",
+                "kits_migrated": 1,
+                "kits_current": 0,
+                "results": [
+                    {
+                        "kit": "sdlc",
+                        "status": "migrated",
+                        "from_version": 1,
+                        "to_version": 2,
+                        "regenerated": {"error": "template parse failed"},
+                    },
+                ],
+            })
+        out = buf.getvalue()
+        self.assertIn("Regen failed", out)
+
+    def test_other_status(self):
+        from cypilot.commands.kit import _human_kit_migrate
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_kit_migrate({
+                "status": "PARTIAL",
+                "kits_migrated": 0,
+                "kits_current": 0,
+                "results": [{"kit": "x", "status": "weird"}],
+            })
+        out = buf.getvalue()
+        self.assertIn("PARTIAL", out)
+
+
+class TestHumanUpdateDetailed(_HumanModeBase):
+    """Test _human_update_ok with detailed actions."""
+
+    def test_actions_with_kits_and_core(self):
+        from cypilot.commands.update import _human_update_ok
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_update_ok({
+                "status": "PASS",
+                "dry_run": False,
+                "project_root": "/tmp/project",
+                "cypilot_dir": "/tmp/project/cypilot",
+                "actions": {
+                    "gen_agents": "created",
+                    "gen_skill": "updated",
+                    "config_readme": "unchanged",
+                    "core_update": {
+                        "architecture": "updated",
+                        "schemas": "unchanged",
+                    },
+                    "kits": {
+                        "sdlc": {
+                            "reference": "updated",
+                            "version": {"status": "current"},
+                            "gen": {"files_written": 25, "artifact_kinds": ["DESIGN", "FEATURE"]},
+                        },
+                    },
+                    "agents_regenerated": ["windsurf", "cursor"],
+                },
+            })
+        out = buf.getvalue()
+        self.assertIn("Created (1)", out)
+        self.assertIn("Updated (1)", out)
+        self.assertIn("Unchanged (1)", out)
+        self.assertIn("Core:", out)
+        self.assertIn("architecture", out)
+        self.assertIn("sdlc", out)
+        self.assertIn("25 files generated", out)
+        self.assertIn("DESIGN", out)
+        self.assertIn("windsurf", out)
+
+    def test_dry_run(self):
+        from cypilot.commands.update import _human_update_ok
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_update_ok({
+                "status": "PASS",
+                "dry_run": True,
+                "project_root": "/tmp/p",
+                "cypilot_dir": "/tmp/p/cypilot",
+                "actions": {},
+            })
+        out = buf.getvalue()
+        self.assertIn("[dry-run]", out)
+        self.assertIn("Dry run complete", out)
+
+    def test_with_errors_and_warnings(self):
+        from cypilot.commands.update import _human_update_ok
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            _human_update_ok({
+                "status": "WARN",
+                "dry_run": False,
+                "project_root": "/tmp/p",
+                "cypilot_dir": "/tmp/p/cypilot",
+                "actions": {},
+                "errors": [{"path": "kit1", "error": "broke"}, "plain err"],
+                "warnings": ["drift warning"],
+            })
+        out = buf.getvalue()
+        self.assertIn("broke", out)
+        self.assertIn("plain err", out)
+        self.assertIn("drift warning", out)
 
 
 if __name__ == "__main__":

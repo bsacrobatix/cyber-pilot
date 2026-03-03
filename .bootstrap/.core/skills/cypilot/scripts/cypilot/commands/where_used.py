@@ -1,6 +1,6 @@
 import argparse
 import json
-import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -18,6 +18,8 @@ def cmd_where_used(argv: List[str]) -> int:
     p.add_argument("--include-definitions", action="store_true", help="Include definitions in results")
     args = p.parse_args(argv)
 
+    if args.id_positional and args.id:
+        sys.stderr.write("WARNING: both positional ID and --id given; using positional\n")
     target_id = (args.id_positional or args.id or "").strip()
     if not target_id:
         ui.result({"status": "ERROR", "message": "ID cannot be empty"})
@@ -120,17 +122,9 @@ def _human_where_used(data: dict) -> None:
         ui.blank()
         return
 
-    cwd = os.getcwd()
-
-    def _rel(path: str) -> str:
-        try:
-            return os.path.relpath(path, cwd)
-        except ValueError:
-            return path
-
     ui.blank()
     for r in refs:
-        art = _rel(r.get("artifact", "?"))
+        art = ui.relpath(r.get("artifact", "?"))
         line = r.get("line", "")
         art_type = r.get("artifact_type", "")
         ref_type = r.get("type", "")

@@ -358,8 +358,7 @@ def cmd_kit_install(argv: List[str]) -> int:
             if ver is not None:
                 kit_version = str(ver)
         except Exception as exc:
-            print(f"kit-install: failed to read {conf_toml}: {exc}",
-                  file=sys.stderr)
+            sys.stderr.write(f"kit-install: failed to read {conf_toml}: {exc}\n")
 
     if not kit_slug:
         kit_slug = kit_source.name
@@ -1197,6 +1196,7 @@ def _open_editor_for_marker(
     content = "\n".join(header_lines) + "\n" + user_raw
 
     editor = _get_editor()
+    tmp_path: Optional[str] = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w",
@@ -1208,18 +1208,24 @@ def _open_editor_for_marker(
             tmp.write(content)
             tmp_path = tmp.name
 
-        subprocess.check_call([editor, tmp_path])
+        import shlex
+        cmd = shlex.split(editor)
+        subprocess.check_call(cmd + [tmp_path])
 
         with open(tmp_path, encoding="utf-8") as f:
             edited = f.read()
+    except FileNotFoundError:
+        sys.stderr.write(f"        editor not found: {editor}\n")
+        return None
     except Exception as exc:
         sys.stderr.write(f"        editor failed: {exc}\n")
         return None
     finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
     # Extract content after separator
     sep_idx = edited.find(_EDITOR_SEPARATOR)
@@ -2127,8 +2133,7 @@ def cmd_kit_migrate(argv: List[str]) -> int:
                 except Exception as err:
                     result["status"] = "FAIL"
                     result["regenerated"] = {"error": str(err)}
-                    print(f"kit-migrate: regen failed for {kit_slug}: {err}",
-                          file=sys.stderr)
+                    sys.stderr.write(f"kit-migrate: regen failed for {kit_slug}: {err}\n")
         results.append(result)
     # @cpt-end:cpt-cypilot-flow-blueprint-system-kit-migrate:p1:inst-foreach-migrate-kit
 

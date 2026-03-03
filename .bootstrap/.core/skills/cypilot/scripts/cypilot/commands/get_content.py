@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -124,10 +123,7 @@ def _human_get_content(data: dict) -> None:
 
     artifact = data.get("artifact")
     if artifact:
-        try:
-            artifact = os.path.relpath(str(artifact), os.getcwd())
-        except ValueError:
-            pass
+        artifact = ui.relpath(str(artifact))
         ui.detail("Artifact", str(artifact))
     kind = data.get("kind")
     if kind:

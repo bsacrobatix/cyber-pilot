@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -250,15 +249,6 @@ def _human_list_ids(data: dict) -> None:
         ui.blank()
         return
 
-    # Detect common project root for relative paths
-    cwd = os.getcwd()
-
-    def _rel(path: str) -> str:
-        try:
-            return os.path.relpath(path, cwd)
-        except ValueError:
-            return path
-
     # Group by kind for readability
     by_kind: Dict[str, List[Dict]] = {}
     for h in ids:
@@ -275,7 +265,7 @@ def _human_list_ids(data: dict) -> None:
             line = h.get("line", "")
             artifact = h.get("artifact", "")
             loc = f":{line}" if line else ""
-            art_label = _rel(artifact) if artifact else ""
+            art_label = ui.relpath(artifact) if artifact else ""
             ui.substep(f"  {cid}  ({htype}, {art_label}{loc})")
 
     ui.blank()
