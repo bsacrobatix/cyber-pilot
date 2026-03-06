@@ -49,7 +49,7 @@ jobs:
         run: make test-coverage
 
       - name: Upload coverage report
-        if: always()
+        if: always() && !env.ACT
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -114,7 +114,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install cpt proxy
-        run: make install-proxy
+        run: |
+          make install-proxy
+          pipx ensurepath
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Validate core methodology
         run: make validate

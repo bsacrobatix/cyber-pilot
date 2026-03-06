@@ -33,14 +33,14 @@ def core_subpath(cypilot_root: Path, *parts: str) -> Path:
         return core.joinpath(*parts)
     return cypilot_root.joinpath(*parts)
 
-def gen_subpath(cypilot_root: Path, *parts: str) -> Path:
-    """Resolve a subpath within the .gen/ directory.
+def config_subpath(cypilot_root: Path, *parts: str) -> Path:
+    """Resolve a subpath within the config/ directory.
 
-    Layout: cypilot/.gen/kits/sdlc/SKILL.md
+    Layout: cypilot/config/kits/sdlc/SKILL.md
 
-    Returns the .gen/ path unconditionally (generated dir always uses .gen/).
+    In v3 layout, generated kit outputs live in config/kits/{slug}/.
     """
-    return (cypilot_root / _GEN_SUBDIR).joinpath(*parts)
+    return (cypilot_root / "config").joinpath(*parts)
 
 def cfg_get_str(cfg: object, *keys: str) -> Optional[str]:
     """Extract first non-empty string value from config dict for given keys."""

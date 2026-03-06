@@ -88,13 +88,12 @@ def _gen_readme() -> str:
         "\n"
         "- `SKILL.md` — aggregated skill navigation (routes to per-kit skills)\n"
         "- `AGENTS.md` — generated agent navigation rules\n"
-        "- `kits/{slug}/SKILL.md` — per-kit skill instructions from `@cpt:skill` blocks\n"
-        "- `kits/{slug}/artifacts/{KIND}/` — generated templates, rules, checklists, examples\n"
-        "- `kits/{slug}/constraints.toml` — structural constraints from `@cpt:heading`/`@cpt:id`\n"
+        "- `README.md` — this file\n"
         "\n"
-        "Source of truth: blueprints in `config/kits/{slug}/blueprints/`.\n"
+        "Per-kit generated outputs are in `config/kits/{slug}/`.\n"
+        "Source of truth: blueprints in `kits/{slug}/blueprints/`.\n"
         "To regenerate: `cpt generate-resources`.\n"
-        "Any manual changes **will be overwritten** on the next generation.\n"
+        "Any manual changes to generated files **will be overwritten** on the next generation.\n"
     )
 
 def _config_readme() -> str:
@@ -113,14 +112,14 @@ def _config_readme() -> str:
         "\n"
         "## Directories\n"
         "\n"
-        "- `kits/{slug}/blueprints/` — editable copies of kit blueprints.\n"
-        "  Modify these to customize generated artifacts, then run `cpt generate-resources`.\n"
+        "- `kits/{slug}/` — generated kit outputs (SKILL.md, artifacts/, workflows/, scripts/).\n"
+        "  These are regenerated from blueprints in `kits/{slug}/blueprints/`.\n"
         "\n"
         "## Tips\n"
         "\n"
         "- `AGENTS.md` and `SKILL.md` start empty. Add any project-specific rules or\n"
         "  skill instructions here — they will be picked up alongside the generated ones.\n"
-        "- Changes to blueprints take effect after running `cpt generate-resources`.\n"
+        "- Edit blueprints in `kits/{slug}/blueprints/`, then run `cpt generate-resources`.\n"
     )
 
 def _default_core_toml(system_name: str, system_slug: str) -> dict:
@@ -136,7 +135,7 @@ def _default_core_toml(system_name: str, system_slug: str) -> dict:
         "kits": {
             "cypilot-sdlc": {
                 "format": "Cypilot",
-                "path": ".gen/kits/sdlc",
+                "path": "config/kits/sdlc",
             },
         },
     }
@@ -236,7 +235,7 @@ def _compute_managed_block(install_dir: str) -> str:
         f"\n"
         f"ALWAYS open and follow `{{cypilot_path}}/.gen/AGENTS.md` FIRST\n"
         f"\n"
-        f"ALWAYS open and follow `{{cypilot_path}}/config/AGENTS.md` WHEN it exists\n"
+        f"ALWAYS open and follow `{{cypilot_path}}/config/AGENTS.md` FIRST\n"
         f"\n"
         f"ALWAYS invoke `{{cypilot_path}}/.core/skills/cypilot/SKILL.md` WHEN user asks to do something with Cypilot\n"
         f"\n"
@@ -550,6 +549,8 @@ def cmd_init(argv: List[str]) -> int:
         actions["artifacts_registry"] = "updated" if registry_existed_before else "created"
     # @cpt-end:cpt-cypilot-algo-core-infra-create-config:p1:inst-write-artifacts-toml
 
+    # @cpt-begin:cpt-cypilot-algo-core-infra-create-config:p1:inst-mkdir-kits
+    # @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-prompt-kit-config
     # @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-delegate-kits
     from .kit import install_kit
 
@@ -618,6 +619,8 @@ def cmd_init(argv: List[str]) -> int:
 
     actions["kits"] = json.dumps(kit_results)
     # @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-delegate-kits
+    # @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-prompt-kit-config
+    # @cpt-end:cpt-cypilot-algo-core-infra-create-config:p1:inst-mkdir-kits
 
     # @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-delegate-agents
     # Stub: Agent Generator (Feature 5 boundary) — agent entry points generated separately

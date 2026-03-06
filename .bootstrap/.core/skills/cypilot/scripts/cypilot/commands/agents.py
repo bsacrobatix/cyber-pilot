@@ -5,10 +5,12 @@ Generates agent-native entry points (Windsurf, Cursor, Claude, Copilot, OpenAI),
 composes SKILL.md from kit @cpt:skill sections, and creates workflow proxies.
 
 @cpt-flow:cpt-cypilot-flow-agent-integration-generate:p1
+@cpt-flow:cpt-cypilot-flow-agent-integration-workflow:p1
 @cpt-algo:cpt-cypilot-algo-agent-integration-discover-agents:p1
 @cpt-algo:cpt-cypilot-algo-agent-integration-generate-shims:p1
 @cpt-algo:cpt-cypilot-algo-agent-integration-compose-skill:p1
 @cpt-algo:cpt-cypilot-algo-agent-integration-list-workflows:p1
+@cpt-state:cpt-cypilot-state-agent-integration-entry-points:p1
 @cpt-dod:cpt-cypilot-dod-agent-integration-entry-points:p1
 @cpt-dod:cpt-cypilot-dod-agent-integration-skill-composition:p1
 @cpt-dod:cpt-cypilot-dod-agent-integration-workflow-discovery:p1
@@ -23,7 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ..utils.files import core_subpath, gen_subpath, find_project_root, _is_cypilot_root, _read_cypilot_var, load_project_config
+from ..utils.files import core_subpath, config_subpath, find_project_root, _is_cypilot_root, _read_cypilot_var, load_project_config
 from ..utils.ui import ui
 
 def _safe_relpath(path: Path, base: Path) -> str:
@@ -465,22 +467,22 @@ def _render_template(lines: List[str], variables: Dict[str, str]) -> str:
     rendered = "\n".join(out).rstrip() + "\n"
     return _ensure_frontmatter_description_quoted(rendered)
 
-def _resolve_gen_kits(cypilot_root: Path, project_root: Optional[Path] = None) -> Path:
-    """Resolve .gen/kits/ directory, with fallback to adapter dir for source repos.
+def _resolve_config_kits(cypilot_root: Path, project_root: Optional[Path] = None) -> Path:
+    """Resolve config/kits/ directory, with fallback to adapter dir for source repos.
 
     In self-hosted / source-repo mode, cypilot_root == project_root and
-    .gen/ lives inside the adapter directory (e.g. .bootstrap/.gen/).
+    config/ lives inside the adapter directory (e.g. .bootstrap/config/).
     """
-    gen_kits = gen_subpath(cypilot_root, "kits")
-    if gen_kits.is_dir():
-        return gen_kits
+    config_kits = config_subpath(cypilot_root, "kits")
+    if config_kits.is_dir():
+        return config_kits
     if project_root is not None:
         adapter_name = _read_cypilot_var(project_root)
         if adapter_name:
-            adapter_gen_kits = project_root / adapter_name / ".gen" / "kits"
-            if adapter_gen_kits.is_dir():
-                return adapter_gen_kits
-    return gen_kits
+            adapter_config_kits = project_root / adapter_name / "config" / "kits"
+            if adapter_config_kits.is_dir():
+                return adapter_config_kits
+    return config_kits
 
 def _registered_kit_dirs(project_root: Optional[Path]) -> Optional[Set[str]]:
     """Return set of kit directory names registered in core.toml, or None if config unavailable."""
@@ -502,7 +504,7 @@ def _registered_kit_dirs(project_root: Optional[Path]) -> Optional[Set[str]]:
 
 # @cpt-begin:cpt-cypilot-algo-agent-integration-list-workflows:p1:inst-scan-core-workflows
 def _list_workflow_files(cypilot_root: Path, project_root: Optional[Path] = None) -> List[Tuple[str, Path]]:
-    """List workflow files from .core/workflows/ and .gen/kits/*/workflows/.
+    """List workflow files from .core/workflows/ and config/kits/*/workflows/.
 
     Returns list of (filename, full_path) tuples.  Generated workflows
     from blueprints are discovered alongside core workflows so the agent
@@ -535,12 +537,12 @@ def _list_workflow_files(cypilot_root: Path, project_root: Optional[Path] = None
     # 1. Core workflows
     _scan_dir(core_subpath(cypilot_root, "workflows"))
 
-    # 2. Generated workflows from blueprints (.gen/kits/*/workflows/)
+    # 2. Generated workflows from blueprints (config/kits/*/workflows/)
     registered = _registered_kit_dirs(project_root)
-    gen_kits = _resolve_gen_kits(cypilot_root, project_root)
-    if gen_kits.is_dir():
+    config_kits = _resolve_config_kits(cypilot_root, project_root)
+    if config_kits.is_dir():
         try:
-            for kit_dir in sorted(gen_kits.iterdir()):
+            for kit_dir in sorted(config_kits.iterdir()):
                 if registered is not None and kit_dir.name not in registered:
                     continue
                 _scan_dir(kit_dir / "workflows")
@@ -741,12 +743,12 @@ def _process_single_agent(
                     expected = (pth.parent / target_rel).resolve()
                 else:
                     expected = Path(target_rel)
-                # Accept targets in .core/workflows/ or .gen/kits/*/workflows/
+                # Accept targets in .core/workflows/ or config/kits/*/workflows/
                 try:
                     expected.relative_to(core_subpath(cypilot_root, "workflows"))
                 except ValueError:
                     try:
-                        expected.relative_to(_resolve_gen_kits(cypilot_root, project_root))
+                        expected.relative_to(_resolve_config_kits(cypilot_root, project_root))
                     except ValueError:
                         continue
                 if expected.exists():
@@ -779,13 +781,13 @@ def _process_single_agent(
                 skill_source_name = skill_fm.get("name", skill_name)
                 skill_source_description = skill_fm.get("description", "Proxy to Cypilot core skill instructions")
 
-                # Enrich description with per-kit skill descriptions from .gen/kits/*/SKILL.md
+                # Enrich description with per-kit skill descriptions from config/kits/*/SKILL.md
                 registered = _registered_kit_dirs(project_root)
-                gen_kits = _resolve_gen_kits(cypilot_root, project_root)
-                if gen_kits.is_dir():
+                config_kits = _resolve_config_kits(cypilot_root, project_root)
+                if config_kits.is_dir():
                     kit_descs: List[str] = []
                     try:
-                        for kit_dir in sorted(gen_kits.iterdir()):
+                        for kit_dir in sorted(config_kits.iterdir()):
                             if registered is not None and kit_dir.name not in registered:
                                 continue
                             kit_skill = kit_dir / "SKILL.md"

@@ -9,10 +9,9 @@ Contents:
 
 - `SKILL.md` — aggregated skill navigation (routes to per-kit skills)
 - `AGENTS.md` — generated agent navigation rules
-- `kits/{slug}/SKILL.md` — per-kit skill instructions from `@cpt:skill` blocks
-- `kits/{slug}/artifacts/{KIND}/` — generated templates, rules, checklists, examples
-- `kits/{slug}/constraints.toml` — structural constraints from `@cpt:heading`/`@cpt:id`
+- `README.md` — this file
 
-Source of truth: blueprints in `config/kits/{slug}/blueprints/`.
+Per-kit generated outputs are in `config/kits/{slug}/`.
+Source of truth: blueprints in `kits/{slug}/blueprints/`.
 To regenerate: `cpt generate-resources`.
-Any manual changes **will be overwritten** on the next generation.
+Any manual changes to generated files **will be overwritten** on the next generation.

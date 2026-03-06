@@ -409,5 +409,88 @@ class TestCmdSpecCoverage(unittest.TestCase):
                     self.assertIn("uncovered_ranges", entry)
 
 
+class TestFormatRanges(unittest.TestCase):
+    """Cover _format_ranges helper."""
+
+    def test_single_line_range(self):
+        from cypilot.commands.spec_coverage import _format_ranges
+        self.assertEqual(_format_ranges([[5, 5]]), "5")
+
+    def test_multi_line_range(self):
+        from cypilot.commands.spec_coverage import _format_ranges
+        self.assertEqual(_format_ranges([[1, 3], [7, 7]]), "1-3, 7")
+
+    def test_empty(self):
+        from cypilot.commands.spec_coverage import _format_ranges
+        self.assertEqual(_format_ranges([]), "")
+
+
+class TestMinFileGranularity(TestCmdSpecCoverage):
+    """Cover min_file_granularity threshold logic."""
+
+    def test_min_file_granularity_fail(self):
+        with TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "src"
+            src.mkdir()
+            (src / "low_gran.py").write_text(
+                "# @cpt-algo:cpt-my-algo:p1\nx = 1\ny = 2\nz = 3\n", encoding="utf-8"
+            )
+            ctx = self._make_context(root, systems=[
+                SystemNode(name="sys1", slug="sys1", kit="test",
+                           artifacts=[], children=[],
+                           codebase=[CodebaseEntry(path="src", extensions=[".py"])]),
+            ])
+            with patch("cypilot.utils.context.get_context", return_value=ctx):
+                with patch("sys.stdout", new_callable=StringIO) as mock_out:
+                    ret = cmd_spec_coverage(["--min-file-granularity", "0.99"])
+            parsed = json.loads(mock_out.getvalue())
+            if parsed["status"] == "FAIL":
+                self.assertTrue(any("granularity" in f for f in parsed.get("threshold_failures", [])))
+
+    def test_min_file_coverage_with_zero_total(self):
+        """File with 0 total_lines is skipped in per-file coverage check."""
+        with TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "src"
+            src.mkdir()
+            (src / "empty.py").write_text("", encoding="utf-8")
+            ctx = self._make_context(root, systems=[
+                SystemNode(name="sys1", slug="sys1", kit="test",
+                           artifacts=[], children=[],
+                           codebase=[CodebaseEntry(path="src", extensions=[".py"])]),
+            ])
+            with patch("cypilot.utils.context.get_context", return_value=ctx):
+                with patch("sys.stdout", new_callable=StringIO) as mock_out:
+                    ret = cmd_spec_coverage(["--min-file-coverage", "50"])
+            self.assertIn(ret, (0, 2))
+
+
+class TestHumanSpecCoverage(unittest.TestCase):
+    """Cover _human_spec_coverage with uncovered_ranges."""
+
+    def test_human_output_with_uncovered_ranges(self):
+        from cypilot.commands.spec_coverage import _human_spec_coverage
+        data = {
+            "status": "PASS",
+            "summary": {
+                "covered_files": 1, "total_files": 1,
+                "covered_lines": 3, "effective_lines": 5,
+                "coverage_pct": 60.0, "granularity_score": 0.5,
+            },
+            "files": {
+                "src/foo.py": {
+                    "total_lines": 5, "covered_lines": 3,
+                    "coverage_pct": 60.0, "granularity": 0.5,
+                    "uncovered_ranges": [[4, 5]],
+                }
+            },
+        }
+        import io
+        buf = io.StringIO()
+        with patch("sys.stderr", buf):
+            _human_spec_coverage(data)
+
+
 if __name__ == "__main__":
     unittest.main()

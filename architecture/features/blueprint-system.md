@@ -26,6 +26,8 @@
   - [Conf.toml Helpers](#conftoml-helpers)
   - [Collect SKILL Extensions](#collect-skill-extensions)
   - [Generate Workflows](#generate-workflows)
+  - [Resource Diff Engine](#resource-diff-engine)
+  - [Blueprint Hash Detection](#blueprint-hash-detection)
 - [4. States (CDSL)](#4-states-cdsl)
   - [Kit Installation State](#kit-installation-state)
 - [5. Definitions of Done](#5-definitions-of-done)
@@ -42,11 +44,11 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-cypilot-featstatus-blueprint-system`
+- [x] `p1` - **ID**: `cpt-cypilot-featstatus-blueprint-system`
 
 ## 1. Feature Context
 
-- [ ] `p1` - `cpt-cypilot-feature-blueprint-system`
+- [x] `p1` - `cpt-cypilot-feature-blueprint-system`
 
 ### 1. Overview
 
@@ -73,7 +75,7 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
 
 ### Kit Installation
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-blueprint-system-kit-install`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-blueprint-system-kit-install`
 
 **Actor**: `cpt-cypilot-actor-user`
 
@@ -92,16 +94,16 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
 3. [x] - `p1` - **IF** validation fails **RETURN** error with structural requirements - `inst-if-invalid-source`
 4. [x] - `p1` - Extract kit metadata: read `@cpt:blueprint` marker from first blueprint to get kit slug and version - `inst-extract-metadata`
 5. [x] - `p1` - **IF** kit slug already registered AND `--force` not set **RETURN** error with hint - `inst-if-already-registered`
-6. [ ] - `p1` - Ask user for config output directory (default: `{cypilot_path}/config/kits/{slug}/`) - `inst-ask-config-dir`
-7. [ ] - `p1` - Copy blueprints to `{cypilot_path}/kits/{slug}/blueprints/` (user-editable) - `inst-copy-blueprints`
-8. [ ] - `p1` - Compute SHA-256 hashes for all blueprint files and store in `{cypilot_path}/kits/{slug}/conf.toml` - `inst-compute-hashes`
-9. [ ] - `p1` - Process all blueprints using `cpt-cypilot-algo-blueprint-system-process-kit`, generate outputs into kit config directory - `inst-process-blueprints`
-10. [ ] - `p1` - Register kit in `{cypilot_path}/config/core.toml` with slug, config output path, and artifact templates - `inst-register-kit`
+6. [x] - `p1` - Ask user for config output directory (default: `{cypilot_path}/config/kits/{slug}/`) - `inst-ask-config-dir`
+7. [x] - `p1` - Copy blueprints to `{cypilot_path}/kits/{slug}/blueprints/` (user-editable) - `inst-copy-blueprints`
+8. [x] - `p1` - Copy `conf.toml` to `{cypilot_path}/kits/{slug}/conf.toml` (version metadata only; `blueprint_hashes.toml` stays in source, not installed) - `inst-copy-conf`
+9. [x] - `p1` - Process all blueprints using `cpt-cypilot-algo-blueprint-system-process-kit`, generate outputs into kit config directory - `inst-process-blueprints`
+10. [x] - `p1` - Register kit in `{cypilot_path}/config/core.toml` with slug, config output path, and artifact templates - `inst-register-kit`
 11. [x] - `p1` - **RETURN** installation summary (kit slug, generated files count, registered artifact kinds) - `inst-return-install-ok`
 
 ### Kit Update
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-blueprint-system-kit-update`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-blueprint-system-kit-update`
 
 **Actor**: `cpt-cypilot-actor-user`
 
@@ -120,17 +122,17 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
    1. [x] - `p1` - Load new kit source from cache - `inst-load-new-source`
    2. [x] - `p1` - **IF** `--force` - `inst-if-force`
       1. [x] - `p1` - Overwrite user blueprints in `{cypilot_path}/kits/{slug}/blueprints/` with new source - `inst-force-overwrite`
-   3. [ ] - `p1` - **ELSE** apply hash-based customization detection per blueprint file - `inst-else-smart`
-      1. [ ] - `p1` - Compute SHA-256 of each user blueprint, compare against known default hashes in `{cypilot_path}/kits/{slug}/conf.toml` - `inst-compare-hashes`
-      2. [ ] - `p1` - **IF** hash matches known default → auto-update blueprint silently - `inst-auto-update`
-      3. [ ] - `p1` - **ELSE** (customized) → delegate to Resource Diff Engine for interactive diff - `inst-interactive-diff`
-   4. [ ] - `p1` - Regenerate all outputs using `cpt-cypilot-algo-blueprint-system-process-kit` with interactive diff for user-modified resources - `inst-regenerate`
-   5. [ ] - `p1` - Update kit version and hash registry in `{cypilot_path}/kits/{slug}/conf.toml` - `inst-update-version`
+   3. [x] - `p1` - **ELSE** apply hash-based customization detection per blueprint file - `inst-else-smart`
+      1. [x] - `p1` - Compute SHA-256 of each user blueprint, compare against known hashes for user's installed version from source `blueprint_hashes.toml` (keyed by version) - `inst-compare-hashes`
+      2. [x] - `p1` - **IF** hash matches known default → auto-update blueprint silently - `inst-auto-update`
+      3. [x] - `p1` - **ELSE** (customized) → delegate to Resource Diff Engine for interactive diff - `inst-interactive-diff`
+   4. [x] - `p1` - Regenerate all outputs using `cpt-cypilot-algo-blueprint-system-process-kit` with interactive diff for user-modified resources - `inst-regenerate`
+   5. [x] - `p1` - Update kit version in `{cypilot_path}/kits/{slug}/conf.toml` - `inst-update-version`
 4. [x] - `p1` - **RETURN** update summary (kits updated, files regenerated, diffs resolved) - `inst-return-update-ok`
 
 ### Kit Migrate
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-blueprint-system-kit-migrate`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-blueprint-system-kit-migrate`
 
 **Actor**: `cpt-cypilot-actor-user`
 
@@ -145,8 +147,8 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
 **Steps**:
 1. [x] - `p1` - User invokes `cypilot kit migrate [--kit SLUG] [--dry-run]` - `inst-user-migrate`
 2. [x] - `p1` - Resolve target kits from `{cypilot_path}/kits/` - `inst-resolve-migrate-kits`
-3. [ ] - `p1` - **FOR EACH** kit: call `migrate_kit` (three-way merge at marker level) then regenerate outputs with interactive diff for user-modified resources - `inst-foreach-migrate-kit`
-4. [ ] - `p1` - Update hash registry in `{cypilot_path}/kits/{slug}/conf.toml` - `inst-update-hashes`
+3. [x] - `p1` - **FOR EACH** kit: call `migrate_kit` (three-way merge at marker level) then regenerate outputs with interactive diff for user-modified resources - `inst-foreach-migrate-kit`
+4. [x] - `p1` - Update kit version in `{cypilot_path}/kits/{slug}/conf.toml` - `inst-update-version`
 5. [x] - `p1` - **RETURN** migration summary (kits migrated, blueprints merged, diffs resolved) - `inst-return-migrate-ok`
 
 ### Resource Generation
@@ -229,7 +231,7 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
 
 ### Process Kit
 
-- [ ] `p1` - **ID**: `cpt-cypilot-algo-blueprint-system-process-kit`
+- [x] `p1` - **ID**: `cpt-cypilot-algo-blueprint-system-process-kit`
 
 **Input**: Kit slug, path to kit's `blueprints/` directory
 
@@ -242,11 +244,11 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
    2. [x] - `p1` - Extract artifact kind from `@cpt:blueprint` marker (`artifact` key, or filename without `.md`) - `inst-extract-kind`
    3. [x] - `p1` - Generate per-artifact outputs using `cpt-cypilot-algo-blueprint-system-generate-artifact-outputs` - `inst-gen-artifact`
 3. [x] - `p1` - Aggregate constraints from all blueprints using `cpt-cypilot-algo-blueprint-system-generate-constraints` - `inst-gen-constraints`
-4. [ ] - `p1` - Collect SKILL extensions (`cpt-cypilot-algo-blueprint-system-collect-skill`), write per-kit `SKILL.md` to kit config directory - `inst-collect-skill`
-5. [ ] - `p1` - Generate workflow files (`cpt-cypilot-algo-blueprint-system-generate-workflows`) to kit config directory - `inst-gen-workflows`
-6. [ ] - `p1` - Copy kit `scripts/` to kit config directory - `inst-copy-scripts`
-7. [ ] - `p1` - For each generated output: if existing file differs, delegate to Resource Diff Engine for interactive resolution - `inst-resource-diff`
-8. [ ] - `p1` - **RETURN** list of generated file paths - `inst-return-generated`
+4. [x] - `p1` - Collect SKILL extensions (`cpt-cypilot-algo-blueprint-system-collect-skill`), write per-kit `SKILL.md` to kit config directory - `inst-collect-skill`
+5. [x] - `p1` - Generate workflow files (`cpt-cypilot-algo-blueprint-system-generate-workflows`) to kit config directory - `inst-gen-workflows`
+6. [x] - `p1` - Copy kit `scripts/` to kit config directory - `inst-copy-scripts`
+7. [x] - `p1` - For each generated output: if existing file differs, delegate to Resource Diff Engine for interactive resolution - `inst-resource-diff`
+8. [x] - `p1` - **RETURN** list of generated file paths - `inst-return-generated`
 
 ### Generate Per-Artifact Outputs
 
@@ -410,6 +412,35 @@ Eliminates resource duplication across kit artifacts. Without blueprints, every 
       2. [x] - `p2` - Write to kit config directory `workflows/{name}.md` - `inst-write-workflow`
 2. [x] - `p2` - **RETURN** list of generated workflow paths - `inst-return-workflows`
 
+### Resource Diff Engine
+
+- [x] `p1` - **ID**: `cpt-cypilot-algo-blueprint-system-diff-engine`
+
+**Input**: Directory path, old snapshot (filename → bytes), file extensions to track
+
+**Output**: Diff report (added, removed, modified files) and interactive review results
+
+**Steps**:
+1. [x] - `p1` - Snapshot directory: read all files matching extensions into a `{relative_path: bytes}` map - `inst-snapshot`
+2. [x] - `p1` - Diff snapshot: compare current directory state against old snapshot, classify files as added/removed/modified - `inst-diff`
+3. [x] - `p1` - Show diff summary: print added/removed/modified file counts and paths to stderr with colour coding - `inst-show-summary`
+4. [x] - `p1` - Interactive review: prompt user per-file to accept, reject, or modify changes; support accept-all/reject-all shortcuts - `inst-interactive`
+
+### Blueprint Hash Detection
+
+- [x] `p1` - **ID**: `cpt-cypilot-algo-blueprint-system-hash-detection`
+
+**Input**: Kit directory (blueprints + scripts), source directory with `blueprint_hashes.toml`
+
+**Output**: Hash maps for customization detection; auto-update vs interactive-diff decision per blueprint
+
+**Steps**:
+1. [x] - `p1` - Compute SHA-256 hashes for all kit files (blueprints/*.md and scripts/**) - `inst-compute-hashes`
+2. [x] - `p1` - Read known hashes from source `blueprint_hashes.toml` for a given version - `inst-read-hashes`
+3. [x] - `p1` - Write computed hashes to source `blueprint_hashes.toml` keyed by version (kit source only, never user projects) - `inst-write-hashes`
+4. [x] - `p1` - Read known hashes for user's installed version from source during update - `inst-read-known-hashes`
+5. [x] - `p1` - Compare user blueprint hash against known hash: if match → auto-update; if mismatch → interactive three-way merge - `inst-compare-hashes`
+
 ## 4. States (CDSL)
 
 ### Kit Installation State
@@ -460,7 +491,7 @@ The system **MUST** generate four output files per artifact blueprint: `rules.md
 
 ### Kit-Wide Constraints Generation
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-constraints-gen`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-constraints-gen`
 
 The system **MUST** aggregate `@cpt:heading` and `@cpt:id` markers from all blueprints in a kit into a single `constraints.toml` in the kit's config directory (e.g. `{cypilot_path}/config/kits/{slug}/constraints.toml`). The constraints file **MUST** define ID kinds with their `to_code`, `defined_in`, and `referenced_in` attributes, using deterministic TOML serialization.
 
@@ -476,9 +507,9 @@ The system **MUST** aggregate `@cpt:heading` and `@cpt:id` markers from all blue
 
 ### Kit Installation and Registration
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-kit-install`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-kit-install`
 
-The system **MUST** provide `cypilot kit install <path>` that copies blueprints to `{cypilot_path}/kits/{slug}/blueprints/` (user-editable), computes SHA-256 hashes and stores them in `{cypilot_path}/kits/{slug}/conf.toml`, processes all blueprints to generate outputs into the kit config directory, and registers the kit in `{cypilot_path}/config/core.toml` with the config output path. Installation of an already-registered kit without `--force` **MUST** produce exit code 2 with a helpful message.
+The system **MUST** provide `cypilot kit install <path>` that copies blueprints to `{cypilot_path}/kits/{slug}/blueprints/` (user-editable), copies `conf.toml` to `{cypilot_path}/kits/{slug}/` (hash file stays in source), processes all blueprints to generate outputs into the kit config directory, and registers the kit in `{cypilot_path}/config/core.toml` with the config output path. Installation of an already-registered kit without `--force` **MUST** produce exit code 2 with a helpful message.
 
 **Implements**:
 - `cpt-cypilot-flow-blueprint-system-kit-install`
@@ -492,9 +523,9 @@ The system **MUST** provide `cypilot kit install <path>` that copies blueprints 
 
 ### Kit Update
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-kit-update`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-kit-update`
 
-The system **MUST** provide `cypilot kit update [--force] [--kit SLUG]`. Force mode **MUST** overwrite all user blueprints and regenerate outputs. Smart mode (default) **MUST** use hash-based customization detection — computing SHA-256 of each user blueprint against known default hashes in `{cypilot_path}/kits/{slug}/conf.toml`. Unmodified blueprints **MUST** be auto-updated silently; customized blueprints **MUST** trigger interactive diff via the Resource Diff Engine. All generated outputs (SKILL.md, constraints.toml, artifacts/, codebase/, workflows/, scripts/) **MUST** also use interactive diff when regenerated content differs from user's version.
+The system **MUST** provide `cypilot kit update [--force] [--kit SLUG]`. Force mode **MUST** overwrite all user blueprints and regenerate outputs. Smart mode (default) **MUST** use hash-based customization detection — computing SHA-256 of each user blueprint against known hashes for the user’s installed version from source `blueprint_hashes.toml`. Unmodified blueprints **MUST** be auto-updated silently; customized blueprints **MUST** trigger interactive diff via the Resource Diff Engine. All generated outputs (SKILL.md, constraints.toml, artifacts/, codebase/, workflows/, scripts/) **MUST** also use interactive diff when regenerated content differs from user's version.
 
 **Implements**:
 - `cpt-cypilot-flow-blueprint-system-kit-update`
@@ -509,9 +540,9 @@ The system **MUST** provide `cypilot kit update [--force] [--kit SLUG]`. Force m
 
 ### Kit Migrate
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-kit-migrate`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-blueprint-system-kit-migrate`
 
-The system **MUST** provide `cypilot kit migrate [--kit SLUG] [--dry-run]` that detects kit-level version drift between cache and installed `conf.toml`, applies identity-key-based three-way merge to all `.md` blueprints (matching markers by stable identity key — explicit syntax ID, TOML-derived key, or positional fallback), updates the hash registry in `{cypilot_path}/kits/{slug}/conf.toml`, and regenerates outputs with interactive diff for user-modified resources. Kits with no version drift **MUST** be skipped with "current" status.
+The system **MUST** provide `cypilot kit migrate [--kit SLUG] [--dry-run]` that detects kit-level version drift between cache and installed `conf.toml`, applies identity-key-based three-way merge to all `.md` blueprints (matching markers by stable identity key — explicit syntax ID, TOML-derived key, or positional fallback), updates the kit version in `{cypilot_path}/kits/{slug}/conf.toml`, and regenerates outputs with interactive diff for user-modified resources. Kits with no version drift **MUST** be skipped with "current" status.
 
 **Implements**:
 - `cpt-cypilot-flow-blueprint-system-kit-migrate`
@@ -564,27 +595,28 @@ The system **MUST** provide `cpt generate-resources [--kit SLUG]` that re-proces
 | Kit Command | `skills/.../commands/kit.py` | Kit install, update, generate-resources CLI handlers |
 | Validate Kits | `skills/.../commands/validate_kits.py` | Kit structural validation command |
 | Blueprint Utils | `skills/.../utils/blueprint.py` | Blueprint parsing, `@cpt:` marker extraction, resource generation |
+| Diff Engine | `skills/.../utils/diff_engine.py` | Directory snapshot, diff, interactive review for resource changes |
 | Constraints Utils | `skills/.../utils/constraints.py` | Constraint loading and validation (shared with F-03) |
 
 ## 7. Acceptance Criteria
 
-- [ ] `cypilot kit install <path>` copies blueprints to `kits/{slug}/blueprints/`, computes hashes, generates outputs into kit config directory, and registers in `{cypilot_path}/config/core.toml`
-- [ ] `cypilot kit update --force` overwrites user blueprints and regenerates all outputs
-- [ ] `cypilot kit update` (smart mode) uses hash-based detection: unmodified blueprints auto-update, customized trigger interactive diff
-- [ ] All generated outputs (SKILL.md, constraints.toml, artifacts/, codebase/, workflows/, scripts/) use interactive diff when regenerated content differs from user's version
-- [ ] `cpt generate-resources` re-processes all blueprints and regenerates outputs from user-edited blueprints
-- [ ] `cpt validate-kits` reports PASS for structurally valid kits and FAIL with details for invalid ones
-- [ ] Blueprint parsing handles all marker types: `@cpt:blueprint`, `@cpt:heading`, `@cpt:id`, `@cpt:rule`, `@cpt:check`, `@cpt:prompt`, `@cpt:example`, `@cpt:rules`, `@cpt:checklist`, `@cpt:skill`, `@cpt:system-prompt`, `@cpt:workflow`
-- [ ] Blueprint parsing supports both named syntax (`` `@cpt:TYPE:ID` ``) and legacy syntax (`` `@cpt:TYPE` ``)
-- [ ] Identity keys are resolved via the chain: explicit syntax ID → TOML-derived key → positional index fallback
-- [ ] Non-singleton markers without explicit IDs produce a deprecation warning
-- [ ] Three-way merge matches markers by stable identity key, not by position
-- [ ] Three-way merge inserts new markers at anchor-relative positions (nearest preceding known marker as anchor; forward search when preceding anchor deleted; append as last resort)
-- [ ] Three-way merge respects user deletions: markers present in old reference but absent from user segments are not re-inserted
-- [ ] Generated `template.md` preserves placeholder syntax `{descriptive text}` from `@cpt:heading` markers
-- [ ] Generated `constraints.toml` aggregates ID kinds with `to_code`, `defined_in`, `referenced_in` from all blueprints
-- [ ] Malformed blueprint markers produce actionable error messages with file path and line number
-- [ ] All commands output JSON to stdout and use exit codes 0/1/2
-- [ ] Kit installation during `cpt init` works identically to explicit `cypilot kit install`
-- [ ] SHA-256 hashes stored in `kits/{slug}/conf.toml` under `[hashes."{version}"]`
-- [ ] Resource Diff Engine supports: accept-file, reject-file, accept-all, reject-all, modify (with git-style conflict markers)
+- [x] `cypilot kit install <path>` copies blueprints to `kits/{slug}/blueprints/`, computes hashes, generates outputs into kit config directory, and registers in `{cypilot_path}/config/core.toml`
+- [x] `cypilot kit update --force` overwrites user blueprints and regenerates all outputs
+- [x] `cypilot kit update` (smart mode) uses hash-based detection: unmodified blueprints auto-update, customized trigger interactive diff
+- [x] All generated outputs (SKILL.md, constraints.toml, artifacts/, codebase/, workflows/, scripts/) use interactive diff when regenerated content differs from user's version
+- [x] `cpt generate-resources` re-processes all blueprints and regenerates outputs from user-edited blueprints
+- [x] `cpt validate-kits` reports PASS for structurally valid kits and FAIL with details for invalid ones
+- [x] Blueprint parsing handles all marker types: `@cpt:blueprint`, `@cpt:heading`, `@cpt:id`, `@cpt:rule`, `@cpt:check`, `@cpt:prompt`, `@cpt:example`, `@cpt:rules`, `@cpt:checklist`, `@cpt:skill`, `@cpt:system-prompt`, `@cpt:workflow`
+- [x] Blueprint parsing supports both named syntax (`` `@cpt:TYPE:ID` ``) and legacy syntax (`` `@cpt:TYPE` ``)
+- [x] Identity keys are resolved via the chain: explicit syntax ID → TOML-derived key → positional index fallback
+- [x] Non-singleton markers without explicit IDs produce a deprecation warning
+- [x] Three-way merge matches markers by stable identity key, not by position
+- [x] Three-way merge inserts new markers at anchor-relative positions (nearest preceding known marker as anchor; forward search when preceding anchor deleted; append as last resort)
+- [x] Three-way merge respects user deletions: markers present in old reference but absent from user segments are not re-inserted
+- [x] Generated `template.md` preserves placeholder syntax `{descriptive text}` from `@cpt:heading` markers
+- [x] Generated `constraints.toml` aggregates ID kinds with `to_code`, `defined_in`, `referenced_in` from all blueprints
+- [x] Malformed blueprint markers produce actionable error messages with file path and line number
+- [x] All commands output JSON to stdout and use exit codes 0/1/2
+- [x] Kit installation during `cpt init` works identically to explicit `cypilot kit install`
+- [x] SHA-256 hashes stored in kit source `blueprint_hashes.toml` (keyed by version, never installed to user projects)
+- [x] Resource Diff Engine supports: accept-file, reject-file, accept-all, reject-all, modify (with git-style conflict markers)

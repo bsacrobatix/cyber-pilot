@@ -3,6 +3,7 @@
 @cpt-flow:cpt-cypilot-flow-spec-coverage-report:p1
 @cpt-dod:cpt-cypilot-dod-spec-coverage-percentage:p1
 @cpt-dod:cpt-cypilot-dod-spec-coverage-granularity:p1
+@cpt-state:cpt-cypilot-state-spec-coverage-report:p1
 @cpt-dod:cpt-cypilot-dod-spec-coverage-report:p1
 """
 import argparse
@@ -25,6 +26,7 @@ def cmd_spec_coverage(argv: List[str]) -> int:
     p.add_argument("--min-coverage", type=float, default=None, help="Minimum coverage percentage (0-100). Exit 2 if below.")
     p.add_argument("--min-file-coverage", type=float, default=None, help="Minimum per-file coverage percentage (0-100). Exit 2 if any file is below.")
     p.add_argument("--min-granularity", type=float, default=None, help="Minimum granularity score (0-1). Exit 2 if below.")
+    p.add_argument("--min-file-granularity", type=float, default=None, help="Minimum per-file granularity score (0-1). Exit 2 if any covered file is below.")
     p.add_argument("--system", action="append", default=None, dest="systems", help="Limit to system slug(s). Can be repeated. Default: all systems.")
     p.add_argument("--verbose", action="store_true", help="Include per-file marker details and covered ranges")
     p.add_argument("--output", default=None, help="Write report to file instead of stdout")
@@ -125,6 +127,9 @@ def cmd_spec_coverage(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-gen-report
 
     # @cpt-begin:cpt-cypilot-flow-spec-coverage-report:p1:inst-if-threshold
+    # @cpt-begin:cpt-cypilot-state-spec-coverage-report:p1:inst-state-covered
+    # @cpt-begin:cpt-cypilot-state-spec-coverage-report:p1:inst-state-partial
+    # @cpt-begin:cpt-cypilot-state-spec-coverage-report:p1:inst-state-uncovered
     status = "PASS"
     threshold_failures: List[str] = []
 
@@ -145,9 +150,23 @@ def cmd_spec_coverage(argv: List[str]) -> int:
         status = "FAIL"
         threshold_failures.append(f"granularity {report.granularity_score:.4f} < {args.min_granularity:.4f}")
 
+    if args.min_file_granularity is not None:
+        for fc in report.per_file:
+            if fc.effective_lines == 0:
+                continue
+            if fc.covered_lines == 0:
+                continue
+            if fc.granularity < args.min_file_granularity:
+                status = "FAIL"
+                rel = _rel_path(fc.path, project_root)
+                threshold_failures.append(f"file {rel} granularity {fc.granularity:.4f} < {args.min_file_granularity:.4f}")
+
     json_report["status"] = status
     if threshold_failures:
         json_report["threshold_failures"] = threshold_failures
+    # @cpt-end:cpt-cypilot-state-spec-coverage-report:p1:inst-state-uncovered
+    # @cpt-end:cpt-cypilot-state-spec-coverage-report:p1:inst-state-partial
+    # @cpt-end:cpt-cypilot-state-spec-coverage-report:p1:inst-state-covered
     # @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-if-threshold
 
     # @cpt-begin:cpt-cypilot-flow-spec-coverage-report:p1:inst-return-report
@@ -200,7 +219,8 @@ def _human_spec_coverage(data: dict) -> None:
             for path, e in covered.items():
                 lines = e.get("total_lines", 0)
                 cov = e.get("coverage_pct", 0)
-                ui.substep(f"  {path}  {cov:.0f}% ({lines} lines)")
+                gran = e.get("granularity", 0)
+                ui.substep(f"  {path}  {cov:.0f}% g={gran:.2f} ({lines} lines)")
                 uncov_ranges = e.get("uncovered_ranges", [])
                 if uncov_ranges:
                     ui.substep(f"    uncovered: {_format_ranges(uncov_ranges)}")

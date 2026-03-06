@@ -368,11 +368,11 @@ class TestCmdUpdatePipeline(unittest.TestCase):
             adapter = _init_project(root, cache)
 
             # Remove user blueprints to simulate first install scenario
-            user_bp = adapter / "config" / "kits" / "sdlc" / "blueprints"
+            user_bp = adapter / "kits" / "sdlc" / "blueprints"
             if user_bp.exists():
                 shutil.rmtree(user_bp)
             # Also remove conf.toml
-            user_conf = adapter / "config" / "kits" / "sdlc" / "conf.toml"
+            user_conf = adapter / "kits" / "sdlc" / "conf.toml"
             if user_conf.exists():
                 user_conf.unlink()
 
@@ -473,8 +473,8 @@ class TestUpdateWithRichBlueprints(unittest.TestCase):
                 agents_text = agents_md.read_text(encoding="utf-8")
                 self.assertIn("requirements assistant", agents_text)
 
-                # Workflow file should exist
-                wf_dir = gen_dir / "kits" / "sdlc" / "workflows"
+                # Workflow file should exist in config/kits/
+                wf_dir = adapter / "config" / "kits" / "sdlc" / "workflows"
                 self.assertTrue(wf_dir.is_dir())
                 wf_files = list(wf_dir.glob("*.md"))
                 self.assertGreater(len(wf_files), 0)

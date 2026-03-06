@@ -4,7 +4,7 @@
 **Kit**: sdlc
 
 **Dependencies**:
-- `{cypilot_path}/.gen/kits/sdlc/codebase/checklist.md` — semantic quality criteria
+- `{cypilot_path}/config/kits/sdlc/codebase/checklist.md` — semantic quality criteria
 
 ## Table of Contents
 

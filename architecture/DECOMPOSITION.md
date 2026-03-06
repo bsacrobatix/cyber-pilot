@@ -40,7 +40,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 ### 2.1 [Core Infrastructure](features/core-infra.md) ⏳ HIGH
 
-- [ ] `p1` - **ID**: `cpt-cypilot-feature-core-infra`
+- [x] `p1` - **ID**: `cpt-cypilot-feature-core-infra`
 
 - **Purpose**: Provide the foundation layer — global CLI proxy, skill engine command dispatch, config directory management, and project initialization — upon which all other features are built.
 
@@ -60,25 +60,25 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-fr-core-installer`
-  - [ ] `p1` - `cpt-cypilot-fr-core-init`
-  - [ ] `p1` - `cpt-cypilot-fr-core-config`
-  - [ ] `p1` - `cpt-cypilot-fr-core-skill-engine`
-  - [x] `p1` - `cpt-cypilot-nfr-adoption-usability`
-  - [x] `p1` - `cpt-cypilot-nfr-reliability-recoverability`
+  - `p1` - `cpt-cypilot-fr-core-installer`
+  - `p1` - `cpt-cypilot-fr-core-init`
+  - `p1` - `cpt-cypilot-fr-core-config`
+  - `p1` - `cpt-cypilot-fr-core-skill-engine`
+  - `p1` - `cpt-cypilot-nfr-adoption-usability`
+  - `p1` - `cpt-cypilot-nfr-reliability-recoverability`
 
 - **Design Principles Covered**:
 
-  - [x] `p1` - `cpt-cypilot-principle-determinism-first`
-  - [ ] `p1` - `cpt-cypilot-principle-occams-razor`
-  - [ ] `p2` - `cpt-cypilot-principle-tool-managed-config`
-  - [ ] `p1` - `cpt-cypilot-principle-zero-harm`
+  - `p1` - `cpt-cypilot-principle-determinism-first`
+  - `p1` - `cpt-cypilot-principle-occams-razor`
+  - `p2` - `cpt-cypilot-principle-tool-managed-config`
+  - `p1` - `cpt-cypilot-principle-zero-harm`
 
 - **Design Constraints Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-constraint-python-stdlib`
-  - [ ] `p1` - `cpt-cypilot-constraint-cross-platform`
-  - [ ] `p2` - `cpt-cypilot-constraint-git-project-heuristics`
+  - `p1` - `cpt-cypilot-constraint-python-stdlib`
+  - `p1` - `cpt-cypilot-constraint-cross-platform`
+  - `p2` - `cpt-cypilot-constraint-git-project-heuristics`
 
 - **Domain Model Entities**:
   - System
@@ -87,9 +87,9 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [ ] `p1` - `cpt-cypilot-component-cli-proxy`
-  - [ ] `p1` - `cpt-cypilot-component-skill-engine`
-  - [ ] `p1` - `cpt-cypilot-component-config-manager`
+  - `p1` - `cpt-cypilot-component-cli-proxy`
+  - `p1` - `cpt-cypilot-component-skill-engine`
+  - `p1` - `cpt-cypilot-component-config-manager`
 
 - **API**:
   - `cpt init [--dir DIR] [--agents AGENTS]`
@@ -105,7 +105,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 ### 2.2 [Blueprint System](features/blueprint-system.md) ⏳ HIGH
 
-- [ ] `p1` - **ID**: `cpt-cypilot-feature-blueprint-system`
+- [x] `p1` - **ID**: `cpt-cypilot-feature-blueprint-system`
 
 - **Purpose**: Enable single-source-of-truth blueprint files that generate all kit resources, with hash-based customization detection and interactive diff preserving user edits.
 
@@ -129,20 +129,20 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-fr-core-blueprint`
-  - [ ] `p1` - `cpt-cypilot-fr-core-kits`
-  - [ ] `p1` - `cpt-cypilot-fr-core-resource-diff`
+  - `p1` - `cpt-cypilot-fr-core-blueprint`
+  - `p1` - `cpt-cypilot-fr-core-kits`
+  - `p1` - `cpt-cypilot-fr-core-resource-diff`
 
 - **Design Principles Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-principle-kit-centric`
-  - [ ] `p1` - `cpt-cypilot-principle-plugin-extensibility`
-  - [ ] `p1` - `cpt-cypilot-principle-dry`
-  - [ ] `p2` - `cpt-cypilot-principle-no-manual-maintenance`
+  - `p1` - `cpt-cypilot-principle-kit-centric`
+  - `p1` - `cpt-cypilot-principle-plugin-extensibility`
+  - `p1` - `cpt-cypilot-principle-dry`
+  - `p2` - `cpt-cypilot-principle-no-manual-maintenance`
 
 - **Design Constraints Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-constraint-markdown-contract`
+  - `p1` - `cpt-cypilot-constraint-markdown-contract`
 
 - **Domain Model Entities**:
   - Blueprint
@@ -152,8 +152,8 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [ ] `p1` - `cpt-cypilot-component-blueprint-processor`
-  - [ ] `p1` - `cpt-cypilot-component-kit-manager`
+  - `p1` - `cpt-cypilot-component-blueprint-processor`
+  - `p1` - `cpt-cypilot-component-kit-manager`
 
 - **API**:
   - `cypilot kit install <path>`
@@ -198,23 +198,23 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-cypilot-fr-core-traceability`
-  - [x] `p1` - `cpt-cypilot-fr-core-cdsl`
-  - [x] `p1` - `cpt-cypilot-fr-sdlc-validation`
-  - [x] `p1` - `cpt-cypilot-fr-sdlc-cross-artifact`
-  - [x] `p1` - `cpt-cypilot-nfr-validation-performance`
-  - [x] `p1` - `cpt-cypilot-nfr-security-integrity`
+  - `p1` - `cpt-cypilot-fr-core-traceability`
+  - `p1` - `cpt-cypilot-fr-core-cdsl`
+  - `p1` - `cpt-cypilot-fr-sdlc-validation`
+  - `p1` - `cpt-cypilot-fr-sdlc-cross-artifact`
+  - `p1` - `cpt-cypilot-nfr-validation-performance`
+  - `p1` - `cpt-cypilot-nfr-security-integrity`
 
 - **Design Principles Covered**:
 
-  - [x] `p1` - `cpt-cypilot-principle-determinism-first`
-  - [x] `p1` - `cpt-cypilot-principle-traceability-by-design`
-  - [x] `p1` - `cpt-cypilot-principle-ci-automation-first`
-  - [x] `p2` - `cpt-cypilot-principle-machine-readable`
+  - `p1` - `cpt-cypilot-principle-determinism-first`
+  - `p1` - `cpt-cypilot-principle-traceability-by-design`
+  - `p1` - `cpt-cypilot-principle-ci-automation-first`
+  - `p2` - `cpt-cypilot-principle-machine-readable`
 
 - **Design Constraints Covered**:
 
-  - [x] `p1` - `cpt-cypilot-constraint-no-weakening`
+  - `p1` - `cpt-cypilot-constraint-no-weakening`
 
 - **Domain Model Entities**:
   - Identifier
@@ -223,8 +223,8 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-cypilot-component-validator`
-  - [x] `p1` - `cpt-cypilot-component-traceability-engine`
+  - `p1` - `cpt-cypilot-component-validator`
+  - `p1` - `cpt-cypilot-component-traceability-engine`
 
 - **API**:
   - `cpt validate --artifact <path>`
@@ -244,7 +244,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 ### 2.4 [SDLC Kit & Artifact Pipeline](features/sdlc-kit.md) ⏳ HIGH
 
-- [ ] `p1` - **ID**: `cpt-cypilot-feature-sdlc-kit`
+- [x] `p1` - **ID**: `cpt-cypilot-feature-sdlc-kit`
 
 - **Purpose**: Provide the primary domain kit — SDLC blueprints for PRD, DESIGN, ADR, DECOMPOSITION, and FEATURE — enabling the artifact-first development pipeline.
 
@@ -264,17 +264,17 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-fr-sdlc-pipeline`
-  - [ ] `p2` - `cpt-cypilot-fr-sdlc-plugin`
+  - `p1` - `cpt-cypilot-fr-sdlc-pipeline`
+  - `p2` - `cpt-cypilot-fr-sdlc-plugin`
 
 - **Design Principles Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-principle-kit-centric`
-  - [ ] `p1` - `cpt-cypilot-principle-dry`
+  - `p1` - `cpt-cypilot-principle-kit-centric`
+  - `p1` - `cpt-cypilot-principle-dry`
 
 - **Design Constraints Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-constraint-markdown-contract`
+  - `p1` - `cpt-cypilot-constraint-markdown-contract`
 
 - **Domain Model Entities**:
   - Blueprint
@@ -283,7 +283,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [ ] `p1` - `cpt-cypilot-component-sdlc-plugin`
+  - `p1` - `cpt-cypilot-component-sdlc-plugin`
 
 - **API**:
   - `cpt self-check`
@@ -300,7 +300,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 ### 2.5 [Agent Integration & Workflows](features/agent-integration.md) ✅ DONE
 
-- [ ] `p1` - **ID**: `cpt-cypilot-feature-agent-integration`
+- [x] `p1` - **ID**: `cpt-cypilot-feature-agent-integration`
 
 - **Purpose**: Bridge Cypilot's unified skill system to diverse AI coding assistants by generating agent-native entry points and providing generic generate/analyze workflows.
 
@@ -319,13 +319,13 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-fr-core-agents`
-  - [ ] `p1` - `cpt-cypilot-fr-core-workflows`
+  - `p1` - `cpt-cypilot-fr-core-agents`
+  - `p1` - `cpt-cypilot-fr-core-workflows`
 
 - **Design Principles Covered**:
 
-  - [ ] `p2` - `cpt-cypilot-principle-skill-documented`
-  - [ ] `p2` - `cpt-cypilot-principle-no-manual-maintenance`
+  - `p2` - `cpt-cypilot-principle-skill-documented`
+  - `p2` - `cpt-cypilot-principle-no-manual-maintenance`
 
 - **Design Constraints Covered**:
 
@@ -337,7 +337,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-cypilot-component-agent-generator`
+  - `p1` - `cpt-cypilot-component-agent-generator`
 
 - **API**:
   - `cpt agents [--agent A]`
@@ -369,13 +369,13 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-fr-sdlc-pr-review`
-  - [ ] `p1` - `cpt-cypilot-fr-sdlc-pr-status`
+  - `p1` - `cpt-cypilot-fr-sdlc-pr-review`
+  - `p1` - `cpt-cypilot-fr-sdlc-pr-status`
 
 - **Design Principles Covered**:
 
-  - [x] `p1` - `cpt-cypilot-principle-determinism-first`
-  - [x] `p1` - `cpt-cypilot-principle-ci-automation-first`
+  - `p1` - `cpt-cypilot-principle-determinism-first`
+  - `p1` - `cpt-cypilot-principle-ci-automation-first`
 
 - **Design Constraints Covered**:
 
@@ -400,7 +400,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **External Dependencies**:
 
-  - [ ] `p2` - `cpt-cypilot-interface-github-gh-cli`
+  - `p2` - `cpt-cypilot-interface-github-gh-cli`
 
 
 ### 2.7 [Version & Config Management](features/version-config.md) ⏳ MEDIUM
@@ -425,15 +425,15 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p2` - `cpt-cypilot-fr-core-version`
-  - [ ] `p1` - `cpt-cypilot-fr-core-layout-migration`
-  - [ ] `p2` - `cpt-cypilot-fr-core-cli-config`
-  - [x] `p1` - `cpt-cypilot-nfr-reliability-recoverability`
+  - `p2` - `cpt-cypilot-fr-core-version`
+  - `p1` - `cpt-cypilot-fr-core-layout-migration`
+  - `p2` - `cpt-cypilot-fr-core-cli-config`
+  - `p1` - `cpt-cypilot-nfr-reliability-recoverability`
 
 - **Design Principles Covered**:
 
-  - [ ] `p2` - `cpt-cypilot-principle-tool-managed-config`
-  - [ ] `p2` - `cpt-cypilot-principle-no-manual-maintenance`
+  - `p2` - `cpt-cypilot-principle-tool-managed-config`
+  - `p2` - `cpt-cypilot-principle-no-manual-maintenance`
 
 - **Design Constraints Covered**:
 
@@ -481,16 +481,16 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p2` - `cpt-cypilot-fr-core-vscode-plugin`
-  - [ ] `p2` - `cpt-cypilot-fr-core-template-qa`
-  - [ ] `p2` - `cpt-cypilot-fr-core-doctor`
-  - [ ] `p3` - `cpt-cypilot-fr-core-hooks`
-  - [ ] `p3` - `cpt-cypilot-fr-core-completions`
+  - `p2` - `cpt-cypilot-fr-core-vscode-plugin`
+  - `p2` - `cpt-cypilot-fr-core-template-qa`
+  - `p2` - `cpt-cypilot-fr-core-doctor`
+  - `p3` - `cpt-cypilot-fr-core-hooks`
+  - `p3` - `cpt-cypilot-fr-core-completions`
 
 - **Design Principles Covered**:
 
-  - [x] `p2` - `cpt-cypilot-principle-machine-readable`
-  - [ ] `p1` - `cpt-cypilot-principle-zero-harm`
+  - `p2` - `cpt-cypilot-principle-machine-readable`
+  - `p1` - `cpt-cypilot-principle-zero-harm`
 
 - **Design Constraints Covered**:
 
@@ -540,16 +540,16 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p2` - `cpt-cypilot-fr-sdlc-code-gen`
-  - [ ] `p2` - `cpt-cypilot-fr-sdlc-brownfield`
-  - [ ] `p2` - `cpt-cypilot-fr-sdlc-lifecycle`
-  - [ ] `p2` - `cpt-cypilot-fr-sdlc-pr-config`
-  - [ ] `p2` - `cpt-cypilot-fr-sdlc-guides`
+  - `p2` - `cpt-cypilot-fr-sdlc-code-gen`
+  - `p2` - `cpt-cypilot-fr-sdlc-brownfield`
+  - `p2` - `cpt-cypilot-fr-sdlc-lifecycle`
+  - `p2` - `cpt-cypilot-fr-sdlc-pr-config`
+  - `p2` - `cpt-cypilot-fr-sdlc-guides`
 
 - **Design Principles Covered**:
 
-  - [x] `p1` - `cpt-cypilot-principle-traceability-by-design`
-  - [ ] `p2` - `cpt-cypilot-principle-skill-documented`
+  - `p1` - `cpt-cypilot-principle-traceability-by-design`
+  - `p2` - `cpt-cypilot-principle-skill-documented`
 
 - **Design Constraints Covered**:
 
@@ -578,7 +578,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 ### 2.10 [V2 → V3 Migration](features/v2-v3-migration.md) ⏳ HIGH
 
-- [ ] `p1` - **ID**: `cpt-cypilot-feature-v2-v3-migration`
+- [x] `p1` - **ID**: `cpt-cypilot-feature-v2-v3-migration`
 
 - **Purpose**: Migrate existing Cypilot v2 projects (adapter-based, `artifacts.toml`, legacy kit structure) to v3 (blueprint-based, `artifacts.toml`, global CLI installer, `config/` directory) with zero data loss.
 
@@ -604,13 +604,13 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-fr-core-init`
-  - [ ] `p1` - `cpt-cypilot-fr-core-config`
+  - `p1` - `cpt-cypilot-fr-core-init`
+  - `p1` - `cpt-cypilot-fr-core-config`
 
 - **Design Principles Covered**:
 
-  - [ ] `p1` - `cpt-cypilot-principle-zero-harm`
-  - [ ] `p2` - `cpt-cypilot-principle-no-manual-maintenance`
+  - `p1` - `cpt-cypilot-principle-zero-harm`
+  - `p2` - `cpt-cypilot-principle-no-manual-maintenance`
 
 - **Design Constraints Covered**:
 
@@ -623,9 +623,9 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [ ] `p1` - `cpt-cypilot-component-config-manager`
-  - [ ] `p1` - `cpt-cypilot-component-kit-manager`
-  - [ ] `p1` - `cpt-cypilot-component-skill-engine`
+  - `p1` - `cpt-cypilot-component-config-manager`
+  - `p1` - `cpt-cypilot-component-kit-manager`
+  - `p1` - `cpt-cypilot-component-skill-engine`
 
 - **API**:
   - `cpt migrate` (or detected automatically during `cpt init` in v2 project)
@@ -663,17 +663,17 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Requirements Covered**:
 
-  - [x] `p1` - `cpt-cypilot-fr-core-traceability`
-  - [x] `p1` - `cpt-cypilot-fr-core-cdsl`
+  - `p1` - `cpt-cypilot-fr-core-traceability`
+  - `p1` - `cpt-cypilot-fr-core-cdsl`
 
 - **Design Principles Covered**:
 
-  - [x] `p1` - `cpt-cypilot-principle-traceability-by-design`
-  - [x] `p1` - `cpt-cypilot-principle-determinism-first`
+  - `p1` - `cpt-cypilot-principle-traceability-by-design`
+  - `p1` - `cpt-cypilot-principle-determinism-first`
 
 - **Design Constraints Covered**:
 
-  - [x] `p1` - `cpt-cypilot-constraint-no-weakening`
+  - `p1` - `cpt-cypilot-constraint-no-weakening`
 
 - **Domain Model Entities**:
   - CodeFile
@@ -682,8 +682,8 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
 - **Design Components**:
 
-  - [x] `p1` - `cpt-cypilot-component-traceability-engine`
-  - [x] `p1` - `cpt-cypilot-component-validator`
+  - `p1` - `cpt-cypilot-component-traceability-engine`
+  - `p1` - `cpt-cypilot-component-validator`
 
 - **API**:
   - `cpt spec-coverage [--min-coverage N] [--min-granularity N] [--verbose]`

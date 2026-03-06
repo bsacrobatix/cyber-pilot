@@ -502,9 +502,9 @@ def _collect_rules(bp: ParsedBlueprint) -> str:
         for m in bp.markers
     )
     if not is_codebase:
-        dep_base = "{cypilot_path}/.gen/kits/" + kit + "/artifacts/" + bp.artifact_kind
+        dep_base = "{cypilot_path}/config/kits/" + kit + "/artifacts/" + bp.artifact_kind
     else:
-        dep_base = "{cypilot_path}/.gen/kits/" + kit + "/codebase"
+        dep_base = "{cypilot_path}/config/kits/" + kit + "/codebase"
     deps: List[str] = []
     if has_template:
         deps.append("- `" + dep_base + "/template.md` — structural reference")
@@ -1346,6 +1346,8 @@ def process_kit(
     errors.extend(c_errors)
     # @cpt-end:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-gen-constraints
 
+    # @cpt-begin:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-collect-skill
+    # @cpt-begin:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-gen-workflows
     # @cpt-begin:cpt-cypilot-algo-blueprint-system-collect-skill:p2:inst-foreach-skill-bp
     # @cpt-begin:cpt-cypilot-algo-blueprint-system-generate-workflows:p2:inst-foreach-wf-bp
     # Aggregate @cpt:skill, @cpt:sysprompt, and @cpt:workflow blocks across all blueprints
@@ -1370,6 +1372,15 @@ def process_kit(
     # Concatenation happens in summary below via "\n\n".join(all_skill_parts)
     # @cpt-end:cpt-cypilot-algo-blueprint-system-collect-skill:p2:inst-concat-skill
     # @cpt-end:cpt-cypilot-algo-blueprint-system-collect-skill:p2:inst-foreach-skill-bp
+    # @cpt-end:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-collect-skill
+    # @cpt-end:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-gen-workflows
+
+    # @cpt-begin:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-copy-scripts
+    # @cpt-begin:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-resource-diff
+    # NOTE: copy-scripts and resource-diff are handled by the caller (kit.py)
+    # after process_kit returns — see update_kit() and cmd_kit_generate_resources()
+    # @cpt-end:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-resource-diff
+    # @cpt-end:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-copy-scripts
 
     # @cpt-begin:cpt-cypilot-algo-blueprint-system-process-kit:p1:inst-return-generated
     # @cpt-begin:cpt-cypilot-algo-blueprint-system-collect-skill:p2:inst-return-skill

@@ -27,11 +27,11 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-cypilot-featstatus-agent-integration`
+- [x] `p1` - **ID**: `cpt-cypilot-featstatus-agent-integration`
 
 ## 1. Feature Context
 
-- [ ] `p1` - `cpt-cypilot-feature-agent-integration`
+- [x] `p1` - `cpt-cypilot-feature-agent-integration`
 
 ### 1. Overview
 
@@ -88,7 +88,7 @@ Without this feature, users would need to manually create and maintain agent-spe
 
 ### Execute Generic Workflow
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-agent-integration-workflow`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-agent-integration-workflow`
 
 **Actor**: `cpt-cypilot-actor-ai-agent`
 
@@ -139,7 +139,7 @@ Without this feature, users would need to manually create and maintain agent-spe
 
 ### Agent Entry Point State
 
-- [ ] `p1` - **ID**: `cpt-cypilot-state-agent-integration-entry-points`
+- [x] `p1` - **ID**: `cpt-cypilot-state-agent-integration-entry-points`
 
 ```
 [NOT_GENERATED] --agents--> [GENERATED] --agents--> [REGENERATED]

@@ -5,8 +5,15 @@ Ensures kit integrity by verifying that generated templates and examples
 pass the same heading contract and constraint checks used for user artifacts.
 
 @cpt-flow:cpt-cypilot-flow-developer-experience-self-check:p1
+@cpt-flow:cpt-cypilot-flow-sdlc-kit-self-check:p1
+@cpt-flow:cpt-cypilot-flow-sdlc-kit-pipeline:p1
 @cpt-algo:cpt-cypilot-algo-developer-experience-self-check:p1
+@cpt-algo:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1
 @cpt-dod:cpt-cypilot-dod-developer-experience-self-check:p1
+@cpt-dod:cpt-cypilot-dod-sdlc-kit-self-check:p1
+@cpt-dod:cpt-cypilot-dod-sdlc-kit-output-integrity:p1
+@cpt-dod:cpt-cypilot-dod-sdlc-kit-pipeline:p1
+@cpt-dod:cpt-cypilot-dod-sdlc-kit-blueprint-coverage:p1
 """
 
 import argparse
@@ -375,6 +382,7 @@ def run_self_check_from_meta(
         return 1, out
 
     # @cpt-begin:cpt-cypilot-algo-developer-experience-self-check:p1:inst-locate-files
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-foreach-kit
     for kit_id, kit_obj in kits.items():
         if kit_filter and str(kit_id) != str(kit_filter):
             continue
@@ -391,6 +399,7 @@ def run_self_check_from_meta(
         artifacts_dir = kit_base / "artifacts"
         # NOTE: With explicit kit.artifacts mapping, artifacts_dir may be absent.
 
+        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-define-codebase
         kit_constraints, kit_constraint_errs = load_constraints_toml(kit_base)
         if kit_constraint_errs:
             results.append({
@@ -403,9 +412,11 @@ def run_self_check_from_meta(
             overall_status = "FAIL"
             kits_checked += 1
             continue
+        # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-define-codebase
 
         kits_checked += 1
 
+        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-define-expected
         # Determine which kinds to check.
         kinds_to_check: List[str] = []
         explicit_kinds: List[str] = []
@@ -420,12 +431,15 @@ def run_self_check_from_meta(
         else:
             # No explicit mapping and no artifacts/ directory.
             continue
+        # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-define-expected
 
+        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-foreach-kind
         for kind in kinds_to_check:
             kind = str(kind).strip()
             if not kind:
                 continue
 
+            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-output-dir
             template_path = None
             examples_dir = None
             if kit_obj is not None:
@@ -452,7 +466,9 @@ def run_self_check_from_meta(
                 template_path = (kind_dir / "template.md").resolve()
             if examples_dir is None:
                 examples_dir = (kind_dir / "examples").resolve()
+            # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-output-dir
 
+            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-required-files
             # Pick any .md file in examples directory (not just example.md)
             example_path = None
             try:
@@ -462,6 +478,7 @@ def run_self_check_from_meta(
                         example_path = md_files[0]
             except Exception:
                 example_path = None
+            # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-required-files
 
             item: Dict[str, object] = {
                 "kit": str(kit_id),
@@ -473,9 +490,12 @@ def run_self_check_from_meta(
             errs: List[Dict[str, object]] = []
             warns: List[Dict[str, object]] = []
 
+            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-if-missing-file
             if template_path is None or not Path(template_path).is_file():
                 pass  # No template for this kind — skip template checks
+            # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-if-missing-file
             else:
+                # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-constraints
                 trep = _check_template_constraints_consistency(
                     template_path=Path(template_path),
                     kind=str(kind),
@@ -486,10 +506,12 @@ def run_self_check_from_meta(
                 )
                 errs.extend(list(trep.get("errors", []) or []))
                 warns.extend(list(trep.get("warnings", []) or []))
+                # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-constraints
 
             if not example_path:
                 pass  # No example for this kind — skip example checks
             else:
+                # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-codebase
                 constraints_for_kind = None
                 if kit_constraints is not None and getattr(kit_constraints, "by_kind", None) and str(kind).upper() in kit_constraints.by_kind:
                     constraints_for_kind = kit_constraints.by_kind[str(kind).upper()]
@@ -508,7 +530,9 @@ def run_self_check_from_meta(
                 )
                 errs.extend(list(rep.get("errors", []) or []))
                 warns.extend(list(rep.get("warnings", []) or []))
+                # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-check-codebase
 
+            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-if-any-fail
             if errs:
                 item["status"] = "FAIL"
                 item["error_count"] = len(errs)
@@ -518,10 +542,16 @@ def run_self_check_from_meta(
                 item["warning_count"] = len(warns)
                 if errs or bool(verbose):
                     item["warnings"] = warns  # Show warnings on failure or verbose
+            # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-if-any-fail
 
+            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-return-valid
             results.append(item)
+            # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-return-valid
+        # @cpt-end:cpt-cypilot-algo-sdlc-kit-validate-completeness:p1:inst-foreach-kind
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-foreach-kit
     # @cpt-end:cpt-cypilot-algo-developer-experience-self-check:p1:inst-locate-files
 
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-aggregate-results
     out = {
         "status": overall_status,
         "project_root": project_root.as_posix(),
@@ -531,18 +561,22 @@ def run_self_check_from_meta(
         "results": results,
     }
     return (0 if overall_status == "PASS" else 2), out
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-aggregate-results
 
 
 def cmd_self_check(argv: List[str]) -> int:
     # @cpt-begin:cpt-cypilot-flow-developer-experience-self-check:p1:inst-user-self-check
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-user-self-check
     p = argparse.ArgumentParser(prog="self-check", description="Validate kit example artifacts against constraints")
     p.add_argument("--root", default=".", help="Project root to search from (default: current directory)")
     p.add_argument("--kit", "--rule", dest="kit", help="Specific kit ID to check (e.g., cypilot-sdlc)")
     p.add_argument("--verbose", action="store_true", help="Include full per-template error/warning lists")
     args = p.parse_args(argv)
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-user-self-check
     # @cpt-end:cpt-cypilot-flow-developer-experience-self-check:p1:inst-user-self-check
 
     # @cpt-begin:cpt-cypilot-flow-developer-experience-self-check:p1:inst-load-registry
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-load-kits
     start_path = Path(args.root).resolve()
     project_root = find_project_root(start_path)
     if project_root is None:
@@ -562,9 +596,11 @@ def cmd_self_check(argv: List[str]) -> int:
     if slug_errors:
         ui.result({"status": "ERROR", "message": "Invalid slugs in artifacts.toml", "slug_errors": slug_errors})
         return 1
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-load-kits
     # @cpt-end:cpt-cypilot-flow-developer-experience-self-check:p1:inst-load-registry
 
     # @cpt-begin:cpt-cypilot-flow-developer-experience-self-check:p1:inst-return-self-check
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-validate-kit
     rc, out = run_self_check_from_meta(
         project_root=project_root,
         adapter_dir=adapter_dir,
@@ -572,7 +608,12 @@ def cmd_self_check(argv: List[str]) -> int:
         kit_filter=str(args.kit) if args.kit else None,
         verbose=bool(args.verbose),
     )
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-validate-kit
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-if-fail
+    # @cpt-begin:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-return-pass
     ui.result(out, human_fn=lambda d: _human_self_check(d))
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-return-pass
+    # @cpt-end:cpt-cypilot-flow-sdlc-kit-self-check:p1:inst-if-fail
     # @cpt-end:cpt-cypilot-flow-developer-experience-self-check:p1:inst-return-self-check
     return rc
 

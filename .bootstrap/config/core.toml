@@ -11,4 +11,4 @@ kit = "cypilot-sdlc"
 [kits]
 [kits.cypilot-sdlc]
 format = "Cypilot"
-path = ".gen/kits/sdlc"
+path = "config/kits/sdlc"

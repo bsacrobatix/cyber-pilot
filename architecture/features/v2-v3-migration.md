@@ -48,10 +48,10 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-cypilot-featstatus-v2-v3-migration`
+- [x] `p1` - **ID**: `cpt-cypilot-featstatus-v2-v3-migration`
 ## 1. Feature Context
 
-- [ ] `p2` - `cpt-cypilot-feature-v2-v3-migration`
+- [x] `p2` - `cpt-cypilot-feature-v2-v3-migration`
 
 ### 1.1 Overview
 

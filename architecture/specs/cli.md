@@ -21,62 +21,50 @@ drivers:
 
 # Cypilot CLI Specification
 
+
+<!-- toc -->
+
+- [Overview](#overview)
+- [Installation](#installation)
+- [Invocation Model](#invocation-model)
+- [Global Conventions](#global-conventions)
+  - [Output](#output)
+  - [Exit Codes](#exit-codes)
+  - [Common Options](#common-options)
+- [Core Commands](#core-commands)
+  - [init](#init)
+  - [update](#update)
+  - [validate](#validate)
+  - [list-ids](#list-ids)
+  - [where-defined](#where-defined)
+  - [where-used](#where-used)
+  - [get-content](#get-content)
+  - [list-id-kinds](#list-id-kinds)
+  - [info](#info)
+  - [generate-agents](#generate-agents)
+  - [generate-resources](#generate-resources)
+  - [doctor](#doctor)
+  - [self-check](#self-check)
+  - [config](#config)
+  - [hook](#hook)
+  - [completions](#completions)
+- [Kit Commands](#kit-commands)
+  - [SDLC Kit Commands](#sdlc-kit-commands)
+- [Output Format](#output-format)
+- [Exit Codes](#exit-codes-1)
+- [Environment Variables](#environment-variables)
+- [File System Layout](#file-system-layout)
+  - [Global (per user)](#global-per-user)
+  - [Project (per repository)](#project-per-repository)
+  - [Agent Entry Points (generated)](#agent-entry-points-generated)
+- [Error Handling](#error-handling)
+  - [Common Errors](#common-errors)
+  - [Error Output](#error-output)
+- [Version Negotiation](#version-negotiation)
+
+<!-- /toc -->
+
 ---
-
-## Table of Contents
-
-- [Cypilot CLI Specification](#cypilot-cli-specification)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Installation](#installation)
-  - [Invocation Model](#invocation-model)
-  - [Global Conventions](#global-conventions)
-    - [Output](#output)
-    - [Exit Codes](#exit-codes)
-    - [Common Options](#common-options)
-  - [Core Commands](#core-commands)
-    - [init](#init)
-    - [update](#update)
-    - [validate](#validate)
-    - [list-ids](#list-ids)
-    - [where-defined](#where-defined)
-    - [where-used](#where-used)
-    - [get-content](#get-content)
-    - [list-id-kinds](#list-id-kinds)
-    - [info](#info)
-    - [generate-agents](#generate-agents)
-    - [generate-resources](#generate-resources)
-    - [doctor](#doctor)
-    - [self-check](#self-check)
-    - [config](#config)
-      - [config show](#config-show)
-      - [config system add](#config-system-add)
-      - [config system remove](#config-system-remove)
-      - [config system rename](#config-system-rename)
-      - [config ignore add](#config-ignore-add)
-      - [config ignore remove](#config-ignore-remove)
-      - [config kit install](#config-kit-install)
-    - [hook](#hook)
-    - [completions](#completions)
-  - [Kit Commands](#kit-commands)
-    - [SDLC Kit Commands](#sdlc-kit-commands)
-      - [sdlc autodetect show](#sdlc-autodetect-show)
-      - [sdlc autodetect add-artifact](#sdlc-autodetect-add-artifact)
-      - [sdlc autodetect add-codebase](#sdlc-autodetect-add-codebase)
-      - [sdlc pr-review](#sdlc-pr-review)
-      - [sdlc pr-status](#sdlc-pr-status)
-  - [Output Format](#output-format)
-  - [Exit Codes](#exit-codes-1)
-  - [Environment Variables](#environment-variables)
-  - [File System Layout](#file-system-layout)
-    - [Global (per user)](#global-per-user)
-    - [Project (per repository)](#project-per-repository)
-    - [Agent Entry Points (generated)](#agent-entry-points-generated)
-  - [Error Handling](#error-handling)
-    - [Common Errors](#common-errors)
-    - [Error Output](#error-output)
-  - [Version Negotiation](#version-negotiation)
-
 ---
 
 ## Overview
@@ -207,34 +195,41 @@ cpt init [--dir DIR] [--agents AGENTS]
 Update project skill to the cached version.
 
 ```
-cpt update [--check] [--force]
+cpt update [--project-root P] [--dry-run] [--no-interactive] [-y/--yes]
 ```
 
 | Option | Description |
 |--------|-------------|
-| `--check` | Show available updates without applying |
-| `--force` | Force update even if versions match |
+| `--project-root P` | Project root directory (default: auto-detect from cwd) |
+| `--dry-run` | Show what would be done without writing |
+| `--no-interactive` | Disable interactive prompts (auto-skip customized markers) |
+| `-y`, `--yes` | Auto-approve all prompts (no interaction) |
 
 **Behavior**:
-1. If `--check` → compare versions, output diff, exit.
-2. If cache is outdated → download latest release from GitHub first.
-3. Copy cached skill into project install directory.
-4. Migrate `{cypilot_path}/config/core.toml` to new schema version (preserve all user settings).
-5. Invoke each kit's migration script for kit config files.
-6. Update blueprints via reference-based three-way diff.
-7. Regenerate all resources from updated blueprints.
-8. Regenerate agent entry points.
+1. Resolve project root and cypilot directory.
+2. Replace `.core/` from cache (always force-overwrite).
+3. For each kit in cache: update reference copy, compare blueprint versions (skip same, warn if migration needed, copy on first install), regenerate `.gen/` outputs from user blueprints.
+4. Write aggregate `.gen/AGENTS.md` and `.gen/SKILL.md` from collected kit parts.
+5. Ensure `config/` scaffold files exist (create only if missing).
+6. Re-inject root `AGENTS.md` and `CLAUDE.md` managed blocks.
+7. Auto-regenerate agent integration files if real changes happened.
+8. Run self-check to verify kit integrity; include result in report (WARN if failed).
+9. Return update report.
 
 **Output** (JSON):
 ```json
 {
-  "status": "ok",
-  "previous_version": "0.5.0",
-  "new_version": "0.6.0",
-  "kits_migrated": ["sdlc"],
-  "blueprints_updated": 5,
-  "blueprints_conflicts": 0,
-  "agent_entry_points_regenerated": true
+  "status": "PASS",
+  "project_root": "/path/to/project",
+  "cypilot_dir": "/path/to/project/.bootstrap",
+  "dry_run": false,
+  "actions": {
+    "core_update": {"architecture": "updated", "skills": "updated", "...": "..."},
+    "kits": {"sdlc": {"kit": "sdlc", "version": {"status": "current"}, "gen": {"files_written": 25}}},
+    "gen_agents": "updated",
+    "gen_skill": "updated"
+  },
+  "self_check": {"status": "PASS", "kits_checked": 1, "templates_checked": 9}
 }
 ```
 
@@ -517,7 +512,7 @@ cpt generate-agents [--agent AGENT]
 Generate all kit resources from blueprints.
 
 ```
-cpt generate-resources [--kit KIT] [--artifact-kind KIND] [--dry-run]
+cpt generate-resources [--kit KIT] [--artifact-kind KIND] [--dry-run] [--no-interactive] [-y]
 ```
 
 | Option | Description |
@@ -525,23 +520,31 @@ cpt generate-resources [--kit KIT] [--artifact-kind KIND] [--dry-run]
 | `--kit KIT` | Generate for a specific kit only |
 | `--artifact-kind KIND` | Generate for a specific artifact kind only |
 | `--dry-run` | Show what would be generated without writing |
+| `--no-interactive` | Disable interactive prompts for generated output diff |
+| `-y`, `--yes` | Auto-approve all prompts (accept all changes) |
 
 **Behavior**:
 1. Load all blueprints for target kits/artifact kinds.
-2. Parse `@cpt:` markers.
-3. Invoke core output generators per marker type.
-4. Write output files (template.md, rules.md, checklist.md, example.md per artifact; constraints.toml kit-wide; codebase/ for non-artifact blueprints).
-5. Generation is deterministic: same blueprint → same output.
+2. Snapshot current `.gen/kits/{slug}/` state before regeneration.
+3. Parse `@cpt:` markers.
+4. Invoke core output generators per marker type.
+5. Write output files (template.md, rules.md, checklist.md, example.md per artifact; constraints.toml kit-wide; codebase/ for non-artifact blueprints).
+6. Interactive diff review: compare regenerated output against snapshot. In interactive mode, prompt user per modified file (accept/reject/modify). In non-interactive mode, accept all changes.
+7. Generation is deterministic: same blueprint → same output.
 
 **Output** (JSON):
 ```json
 {
-  "status": "ok",
-  "generated": [
-    {"blueprint": "config/kits/sdlc/blueprints/PRD.md", "outputs": ["template.md", "rules.md", "checklist.md"]},
-    {"blueprint": "config/kits/sdlc/blueprints/DESIGN.md", "outputs": ["template.md", "rules.md", "checklist.md"]}
-  ],
-  "constraints_toml_updated": true
+  "status": "PASS",
+  "kits_processed": 1,
+  "results": [
+    {
+      "kit": "sdlc",
+      "files_written": 25,
+      "artifact_kinds": ["PRD", "DESIGN"],
+      "gen_diff": {"added": [], "modified": ["artifacts/PRD/template.md"], "unchanged_count": 23}
+    }
+  ]
 }
 ```
 
@@ -590,15 +593,24 @@ cpt doctor
 Validate example artifacts against their templates.
 
 ```
-cpt self-check [--strict] [--kit KIT]
+cpt self-check [--kit KIT] [--verbose]
 ```
 
-**Behavior**:
-1. For each artifact kind in each kit, locate example artifacts.
-2. Validate each example against its template structure.
-3. If `--strict`, apply full checklist validation.
+| Option | Description |
+|--------|-------------|
+| `--kit KIT` | Validate only a specific kit (e.g., `cypilot-sdlc`) |
+| `--verbose` | Include full per-template error/warning lists |
 
-**Exit**: 0=PASS, 2=FAIL.
+**Behavior**:
+1. Load installed kits from artifacts registry.
+2. For each kit, load `constraints.toml` and locate template/example files.
+3. Validate each template against constraints (heading contract, ID placeholders, cross-artifact references).
+4. Validate each example artifact against its template structure and constraints.
+5. Report per-kit, per-kind PASS/FAIL with error details.
+
+> **Note**: `self-check` is also invoked automatically at the end of `cpt update`. If it fails, the update status becomes WARN and the self-check report is included in the update output.
+
+**Exit**: 0=PASS, 2=FAIL, 1=ERROR.
 
 ---
 

@@ -36,7 +36,7 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-cypilot-featstatus-traceability-validation`
+- [x] `p1` - **ID**: `cpt-cypilot-featstatus-traceability-validation`
 
 ## 1. Feature Context
 
@@ -355,7 +355,7 @@ The system **MUST** validate each artifact against its kit-defined constraints: 
 
 ### Cross-Artifact Reference Validation
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-traceability-validation-cross-refs`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-traceability-validation-cross-refs`
 
 The system **MUST** validate cross-artifact relationships: every ID reference resolves to a definition, checked references imply checked definitions, checked definitions imply checked references, and coverage rules from `constraints.toml` are enforced (required cross-references between artifact kinds). All consistency violations **MUST** include line numbers and artifact paths.
 
@@ -409,7 +409,7 @@ The system **MUST** provide CLI commands for navigating the ID graph: `list-ids 
 
 ### CDSL Instruction Tracking
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-traceability-validation-cdsl`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-traceability-validation-cdsl`
 
 The system **MUST** scan CDSL instruction markers (`inst-{slug}` suffixes in numbered list items) from FEATURE artifacts, associate each instruction with its parent ID, track checked/unchecked status, and cross-validate against `@cpt-begin/@cpt-end` block markers in code. Missing implementations and orphaned code blocks **MUST** both produce errors.
 
@@ -444,16 +444,16 @@ The system **MUST** scan CDSL instruction markers (`inst-{slug}` suffixes in num
 
 ## 7. Acceptance Criteria
 
-- [ ] `cpt validate` validates all registered artifacts and produces JSON report with PASS/FAIL status
-- [ ] `cpt validate --artifact <path>` validates a single artifact against its constraints
-- [ ] Heading contract validation catches missing required sections and wrong heading levels
-- [ ] ID format validation catches malformed `cpt-*` identifiers with line numbers
-- [ ] Cross-artifact validation catches undefined references, checked/unchecked mismatches, and coverage gaps
-- [ ] Code traceability validation catches orphaned markers, missing `to_code` markers, and unchecked-task markers
-- [ ] CDSL instruction tracking catches missing `@cpt-begin/@cpt-end` blocks and orphaned code blocks
-- [ ] DOCS-ONLY mode prohibits all `@cpt-*` code markers
-- [ ] `cpt list-ids`, `where-defined`, `where-used`, `get-content` return correct JSON results
-- [ ] Validation of a single artifact completes in ≤ 3 seconds
-- [ ] Full project validation (all artifacts + code) completes in ≤ 10 seconds for typical repositories
-- [ ] All validation errors include file path, line number, and actionable fixing prompt
-- [ ] All commands output JSON to stdout and use exit codes 0/1/2
+- [x] `cpt validate` validates all registered artifacts and produces JSON report with PASS/FAIL status
+- [x] `cpt validate --artifact <path>` validates a single artifact against its constraints
+- [x] Heading contract validation catches missing required sections and wrong heading levels
+- [x] ID format validation catches malformed `cpt-*` identifiers with line numbers
+- [x] Cross-artifact validation catches undefined references, checked/unchecked mismatches, and coverage gaps
+- [x] Code traceability validation catches orphaned markers, missing `to_code` markers, and unchecked-task markers
+- [x] CDSL instruction tracking catches missing `@cpt-begin/@cpt-end` blocks and orphaned code blocks
+- [x] DOCS-ONLY mode prohibits all `@cpt-*` code markers
+- [x] `cpt list-ids`, `where-defined`, `where-used`, `get-content` return correct JSON results
+- [x] Validation of a single artifact completes in ≤ 3 seconds
+- [x] Full project validation (all artifacts + code) completes in ≤ 10 seconds for typical repositories
+- [x] All validation errors include file path, line number, and actionable fixing prompt
+- [x] All commands output JSON to stdout and use exit codes 0/1/2

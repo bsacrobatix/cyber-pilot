@@ -89,13 +89,11 @@ class TestInstallKit(unittest.TestCase):
             result = install_kit(kit_src, adapter, "mykit")
             self.assertIn(result["status"], ["PASS", "WARN"])
             self.assertEqual(result["kit"], "mykit")
-            # Reference copy should exist
+            # User blueprints should be in kits/{slug}/blueprints/
             self.assertTrue((adapter / "kits" / "mykit" / "blueprints").is_dir())
-            # User blueprints copied
-            self.assertTrue((adapter / "config" / "kits" / "mykit" / "blueprints").is_dir())
 
     def test_install_kit_with_scripts(self):
-        """Kit with scripts/ directory copies scripts to .gen/."""
+        """Kit with scripts/ directory copies scripts to config/kits/."""
         from cypilot.commands.kit import install_kit
         with TemporaryDirectory() as td:
             td_p = Path(td)
@@ -107,7 +105,7 @@ class TestInstallKit(unittest.TestCase):
             adapter = _bootstrap_project(root)
             result = install_kit(kit_src, adapter, "scripted")
             self.assertIn(result["status"], ["PASS", "WARN"])
-            self.assertTrue((adapter / ".gen" / "kits" / "scripted" / "scripts" / "helper.py").is_file())
+            self.assertTrue((adapter / "config" / "kits" / "scripted" / "scripts" / "helper.py").is_file())
 
     def test_install_kit_with_skill_and_workflow(self):
         """Kit with @cpt:skill and @cpt:workflow markers generates SKILL.md and workflow files."""
@@ -136,14 +134,14 @@ class TestInstallKit(unittest.TestCase):
             adapter = _bootstrap_project(root)
             result = install_kit(kit_src, adapter, "richkit")
             self.assertIn(result["status"], ["PASS", "WARN"])
-            # SKILL.md should be generated
-            skill_path = adapter / ".gen" / "kits" / "richkit" / "SKILL.md"
+            # SKILL.md should be generated in config/kits/
+            skill_path = adapter / "config" / "kits" / "richkit" / "SKILL.md"
             self.assertTrue(skill_path.is_file())
             skill_content = skill_path.read_text(encoding="utf-8")
             self.assertIn("Artifacts: FEAT", skill_content)
             self.assertIn("Workflows: feat-review", skill_content)
-            # Workflow file should be generated
-            wf_path = adapter / ".gen" / "kits" / "richkit" / "workflows" / "feat-review.md"
+            # Workflow file should be generated in config/kits/
+            wf_path = adapter / "config" / "kits" / "richkit" / "workflows" / "feat-review.md"
             self.assertTrue(wf_path.is_file())
             wf_content = wf_path.read_text(encoding="utf-8")
             self.assertIn("type: workflow", wf_content)
@@ -597,7 +595,7 @@ class TestKitHelpers(unittest.TestCase):
             with open(config_dir / "core.toml", "rb") as f:
                 data = tomllib.load(f)
             self.assertIn("mykit", data["kits"])
-            self.assertEqual(data["kits"]["mykit"]["path"], ".gen/kits/mykit")
+            self.assertEqual(data["kits"]["mykit"]["path"], "config/kits/mykit")
 
     def test_register_kit_no_core_toml(self):
         """No core.toml → does nothing, no error."""
@@ -777,8 +775,13 @@ class TestMigrateKit(unittest.TestCase):
     """Tests for the migrate_kit function with marker-level merge."""
 
     def _setup_kit(self, td_p, old_heading="Feature v1", new_heading="Feature v2",
-                   user_heading="Feature v1", ref_ver=2, user_ver=1, with_prev=True):
-        """Create a project with old ref (.prev/), new ref, and user config."""
+                   user_heading="Feature v1", ref_ver=2, user_ver=1, with_hashes=True):
+        """Create source dir and user kit dir for migration tests.
+
+        New layout:
+            source_dir:   Separate kit source with blueprints/ (new version), conf.toml, hashes
+            user_kit_dir: adapter/kits/sdlc/ with blueprints/ (user's copy) + conf.toml
+        """
         root = td_p / "proj"
         adapter = _bootstrap_project(root)
         from cypilot.utils import toml_utils
@@ -788,212 +791,150 @@ class TestMigrateKit(unittest.TestCase):
             '`@cpt:heading`\n```toml\nlevel = 1\ntemplate = "{heading}"\n```\n`@/cpt:heading`\n'
         )
 
-        # New reference
-        ref_dir = adapter / "kits" / "sdlc"
-        ref_bp = ref_dir / "blueprints"
-        ref_bp.mkdir(parents=True)
-        (ref_bp / "FEAT.md").write_text(
+        # Kit source (new version)
+        source_dir = td_p / "kit_source"
+        src_bp = source_dir / "blueprints"
+        src_bp.mkdir(parents=True)
+        (src_bp / "FEAT.md").write_text(
             bp_template.format(heading=new_heading), encoding="utf-8",
         )
-        toml_utils.dump({"version": ref_ver}, ref_dir / "conf.toml")
+        toml_utils.dump({"version": ref_ver}, source_dir / "conf.toml")
 
-        # Old reference (.prev/)
-        if with_prev:
-            prev_bp = ref_dir / ".prev" / "blueprints"
-            prev_bp.mkdir(parents=True)
-            (prev_bp / "FEAT.md").write_text(
-                bp_template.format(heading=old_heading), encoding="utf-8",
-            )
+        # Write hash for old version's blueprint so hash detection works
+        if with_hashes:
+            import hashlib
+            from cypilot.commands.kit import _write_blueprint_hashes
+            old_bp_content = bp_template.format(heading=old_heading)
+            old_hash = hashlib.sha256(old_bp_content.encode("utf-8")).hexdigest()
+            _write_blueprint_hashes(source_dir, str(user_ver), {"blueprints/FEAT.md": old_hash})
 
-        # User config
-        config_kit = adapter / "config" / "kits" / "sdlc"
-        user_bp = config_kit / "blueprints"
+        # User kit dir (blueprints + conf.toml)
+        user_kit_dir = adapter / "kits" / "sdlc"
+        user_bp = user_kit_dir / "blueprints"
         user_bp.mkdir(parents=True)
         (user_bp / "FEAT.md").write_text(
             bp_template.format(heading=user_heading), encoding="utf-8",
         )
-        toml_utils.dump({"version": user_ver}, config_kit / "conf.toml")
+        toml_utils.dump({"version": user_ver}, user_kit_dir / "conf.toml")
 
-        gen_kits = adapter / ".gen" / "kits"
-        return root, adapter, ref_dir, config_kit, gen_kits
+        return root, adapter, source_dir, user_kit_dir
 
-    def test_unchanged_marker_updated_via_prev(self):
-        """Marker unchanged by user → updated from new ref (three-way via .prev/)."""
+    def test_unmodified_blueprint_auto_updated(self):
+        """Blueprint with matching hash → auto-updated (copied from source)."""
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            result = migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
+            _, _, source_dir, user_kit_dir = self._setup_kit(Path(td))
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
             self.assertEqual(result["status"], "migrated")
             bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            self.assertTrue(any("heading" in k for k in bp.get("markers_updated", [])))
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
+            self.assertEqual(bp["action"], "auto_updated")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
             self.assertIn("Feature v2", user_text)
 
-    def test_customized_marker_skipped(self):
-        """Marker customized by user → skipped during merge."""
+    def test_customized_blueprint_preserved(self):
+        """Blueprint with non-matching hash → conservative merge, user preserved."""
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(
+            _, _, source_dir, user_kit_dir = self._setup_kit(
                 Path(td), user_heading="My Custom Heading",
             )
-            result = migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
             bp = result["blueprints"][0]
-            # blueprint marker is unchanged → updated; heading is customized → skipped
-            self.assertTrue(any("heading" in k for k in bp.get("markers_skipped", [])))
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
+            # Conservative merge: old_ref == new_ref → no ref changes → user preserved
+            self.assertEqual(bp["action"], "no_marker_changes")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
             self.assertIn("My Custom Heading", user_text)
 
     def test_no_migration_when_current(self):
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(
+            _, _, source_dir, user_kit_dir = self._setup_kit(
                 Path(td), ref_ver=1, user_ver=1,
                 old_heading="Feature v1", new_heading="Feature v1",
                 user_heading="Feature v1",
             )
-            result = migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
             self.assertEqual(result["status"], "current")
 
     def test_updates_conf_toml(self):
         from cypilot.commands.kit import migrate_kit
         import tomllib
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
-            with open(config_kit / "conf.toml", "rb") as f:
+            _, _, source_dir, user_kit_dir = self._setup_kit(Path(td))
+            migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
+            with open(user_kit_dir / "conf.toml", "rb") as f:
                 data = tomllib.load(f)
             self.assertEqual(data["version"], 2)
 
     def test_dry_run_does_not_write(self):
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            result = migrate_kit("sdlc", ref_dir, config_kit, dry_run=True)
+            _, _, source_dir, user_kit_dir = self._setup_kit(Path(td))
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, dry_run=True)
             # Should report migration but not write
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
             self.assertIn("Feature v1", user_text)
 
-    def test_fallback_without_prev_preserves_user(self):
-        """Without .prev/, user customizations must NOT be overwritten."""
+    def test_no_hash_preserves_customization(self):
+        """Without hashes, user customizations must NOT be overwritten (conservative merge)."""
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(
-                Path(td), with_prev=False,
+            _, _, source_dir, user_kit_dir = self._setup_kit(
+                Path(td), with_hashes=False,
                 user_heading="My Custom Heading",
             )
-            result = migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
             self.assertEqual(result["status"], "migrated")
             # User customization MUST survive
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
             self.assertIn("My Custom Heading", user_text)
             self.assertNotIn("Feature v2", user_text)
 
     def test_kit_version_drift(self):
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(
+            _, _, source_dir, user_kit_dir = self._setup_kit(
                 Path(td), ref_ver=2, user_ver=2,
                 old_heading="Feature v2", new_heading="Feature v2", user_heading="Feature v2",
             )
             from cypilot.utils import toml_utils
-            toml_utils.dump({"version": 3}, ref_dir / "conf.toml")
-            toml_utils.dump({"version": 2}, config_kit / "conf.toml")
-            result = migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
+            toml_utils.dump({"version": 3}, source_dir / "conf.toml")
+            toml_utils.dump({"version": 2}, user_kit_dir / "conf.toml")
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
             self.assertEqual(result["status"], "migrated")
             self.assertIn("kit_version", result)
 
-    def test_prev_cleaned_after_migration(self):
+    def test_auto_updated_with_interactive(self):
+        """Interactive mode: hash matches → auto_updated without prompts."""
         from cypilot.commands.kit import migrate_kit
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
-            self.assertFalse((ref_dir / ".prev").exists())
-
-    def test_interactive_approve_updates(self):
-        """Interactive mode: user says 'y' → changes applied."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="y"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
+            _, _, source_dir, user_kit_dir = self._setup_kit(Path(td))
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
             bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
+            self.assertEqual(bp["action"], "auto_updated")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
             self.assertIn("Feature v2", user_text)
 
-    def test_interactive_decline_updates(self):
-        """Interactive mode: user says 'N' → changes NOT applied."""
+    def test_customized_conservative_merge_no_prompts(self):
+        """Customized blueprint → conservative merge (no ref changes → no prompts)."""
         from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="n"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-            bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "declined")
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
-            self.assertIn("Feature v1", user_text)
-
-    def test_declined_does_not_bump_conf_toml(self):
-        """Declining all changes must NOT bump conf.toml version (re-prompt on next update)."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        import tomllib
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="n"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-            # conf.toml must still have old version
-            with open(config_kit / "conf.toml", "rb") as f:
-                data = tomllib.load(f)
-            self.assertEqual(data["version"], 1, "conf.toml version should NOT be bumped when all declined")
-
-    def test_declined_preserves_prev(self):
-        """Declining all changes must preserve .prev/ for three-way merge on retry."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="n"):
-                migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-            self.assertTrue((ref_dir / ".prev").is_dir(),
-                            ".prev/ should be preserved when all declined")
-
-    def test_interactive_all_auto_approves(self):
-        """Interactive mode: user says 'all' → all files auto-approved."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="all"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-            bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-
-    def test_interactive_approve_overwrites_customized(self):
-        """Interactive mode: user says 'y' → customized markers overwritten."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit, _ = self._setup_kit(
+            _, _, source_dir, user_kit_dir = self._setup_kit(
                 Path(td), user_heading="My Custom",
             )
-            with patch("builtins.input", return_value="y"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
+            # No interactive prompts expected since conservative merge has no ref changes
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
             bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
-            # Customized marker overwritten with reference
-            self.assertIn("Feature v2", user_text)
-            self.assertNotIn("My Custom", user_text)
+            self.assertEqual(bp["action"], "no_marker_changes")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
+            self.assertIn("My Custom", user_text)
 
-    def test_interactive_ref_removed_approved(self):
-        """Interactive mode: marker removed from ref, user approves → removed from config."""
+    def test_unmodified_auto_updates_with_marker_removal(self):
+        """Hash matches → auto_updated even when new version removes markers."""
         from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
         from cypilot.utils import toml_utils
+        import hashlib
+        from cypilot.commands.kit import _write_blueprint_hashes
         with TemporaryDirectory() as td:
             td_p = Path(td)
             root = td_p / "proj"
@@ -1008,136 +949,62 @@ class TestMigrateKit(unittest.TestCase):
                 '`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "X"\n```\n`@/cpt:blueprint`\n\n'
                 '`@cpt:heading:title`\n```toml\nid = "title"\nlevel = 1\ntemplate = "Title"\n```\n`@/cpt:heading:title`\n'
             )
-            # .prev/ has v1 (with check:old), new ref has v2 (without)
-            ref_dir = adapter / "kits" / "sdlc"
-            ref_bp = ref_dir / "blueprints"
-            ref_bp.mkdir(parents=True)
-            (ref_bp / "X.md").write_text(bp_v2, encoding="utf-8")
-            toml_utils.dump({"version": 2}, ref_dir / "conf.toml")
+            # Source has v2 (without check:old) + v1 hash
+            source_dir = td_p / "kit_source"
+            src_bp = source_dir / "blueprints"
+            src_bp.mkdir(parents=True)
+            (src_bp / "X.md").write_text(bp_v2, encoding="utf-8")
+            toml_utils.dump({"version": 2}, source_dir / "conf.toml")
+            v1_hash = hashlib.sha256(bp_v1.encode("utf-8")).hexdigest()
+            _write_blueprint_hashes(source_dir, "1", {"blueprints/X.md": v1_hash})
 
-            prev_bp = ref_dir / ".prev" / "blueprints"
-            prev_bp.mkdir(parents=True)
-            (prev_bp / "X.md").write_text(bp_v1, encoding="utf-8")
-
-            config_kit = adapter / "config" / "kits" / "sdlc"
-            user_bp = config_kit / "blueprints"
+            # User has v1 (unmodified)
+            user_kit_dir = adapter / "kits" / "sdlc"
+            user_bp = user_kit_dir / "blueprints"
             user_bp.mkdir(parents=True)
             (user_bp / "X.md").write_text(bp_v1, encoding="utf-8")
-            toml_utils.dump({"version": 1}, config_kit / "conf.toml")
+            toml_utils.dump({"version": 1}, user_kit_dir / "conf.toml")
 
-            with patch("builtins.input", return_value="y"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
             bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            user_text = (config_kit / "blueprints" / "X.md").read_text()
+            self.assertEqual(bp["action"], "auto_updated")
+            user_text = (user_kit_dir / "blueprints" / "X.md").read_text()
+            # check:old removed because auto-update copied v2
             self.assertNotIn("check:old", user_text)
             self.assertNotIn("Old check", user_text)
 
-    def test_interactive_deleted_by_user_approved(self):
-        """Interactive mode: user deleted marker, approves → restored from ref."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        from cypilot.utils import toml_utils
-        with TemporaryDirectory() as td:
-            td_p = Path(td)
-            root = td_p / "proj"
-            adapter = _bootstrap_project(root)
-
-            bp_full = (
-                '`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "X"\n```\n`@/cpt:blueprint`\n\n'
-                '`@cpt:heading:title`\n```toml\nid = "title"\nlevel = 1\ntemplate = "Title"\n```\n`@/cpt:heading:title`\n'
-            )
-            bp_partial = (
-                '`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "X"\n```\n`@/cpt:blueprint`\n\n'
-            )
-            ref_dir = adapter / "kits" / "sdlc"
-            ref_bp = ref_dir / "blueprints"
-            ref_bp.mkdir(parents=True)
-            (ref_bp / "X.md").write_text(bp_full, encoding="utf-8")
-            toml_utils.dump({"version": 2}, ref_dir / "conf.toml")
-
-            prev_bp = ref_dir / ".prev" / "blueprints"
-            prev_bp.mkdir(parents=True)
-            (prev_bp / "X.md").write_text(bp_full, encoding="utf-8")
-
-            config_kit = adapter / "config" / "kits" / "sdlc"
-            user_bp = config_kit / "blueprints"
-            user_bp.mkdir(parents=True)
-            # User deleted heading:title
-            (user_bp / "X.md").write_text(bp_partial, encoding="utf-8")
-            toml_utils.dump({"version": 1}, config_kit / "conf.toml")
-
-            with patch("builtins.input", return_value="y"):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-            bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            user_text = (config_kit / "blueprints" / "X.md").read_text()
-            # Deleted marker restored
-            self.assertIn("heading:title", user_text)
-
-    def test_interactive_partial_marker_decline(self):
-        """Per-marker: accept some updates, decline others within same blueprint."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-        from cypilot.utils import toml_utils
-        with TemporaryDirectory() as td:
-            td_p = Path(td)
-            root = td_p / "proj"
-            adapter = _bootstrap_project(root)
-
-            bp_v1 = (
-                '`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "X"\n```\n`@/cpt:blueprint`\n\n'
-                '`@cpt:heading:alpha`\n```toml\nid = "alpha"\nlevel = 2\n```\nOld Alpha\n`@/cpt:heading:alpha`\n'
-                '`@cpt:heading:beta`\n```toml\nid = "beta"\nlevel = 2\n```\nOld Beta\n`@/cpt:heading:beta`\n'
-            )
-            bp_v2 = (
-                '`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "X"\n```\n`@/cpt:blueprint`\n\n'
-                '`@cpt:heading:alpha`\n```toml\nid = "alpha"\nlevel = 2\n```\nNew Alpha\n`@/cpt:heading:alpha`\n'
-                '`@cpt:heading:beta`\n```toml\nid = "beta"\nlevel = 2\n```\nNew Beta\n`@/cpt:heading:beta`\n'
-            )
-            ref_dir = adapter / "kits" / "sdlc"
-            ref_bp = ref_dir / "blueprints"
-            ref_bp.mkdir(parents=True)
-            (ref_bp / "X.md").write_text(bp_v2, encoding="utf-8")
-            toml_utils.dump({"version": 2}, ref_dir / "conf.toml")
-
-            prev_bp = ref_dir / ".prev" / "blueprints"
-            prev_bp.mkdir(parents=True)
-            (prev_bp / "X.md").write_text(bp_v1, encoding="utf-8")
-
-            config_kit = adapter / "config" / "kits" / "sdlc"
-            user_bp = config_kit / "blueprints"
-            user_bp.mkdir(parents=True)
-            (user_bp / "X.md").write_text(bp_v1, encoding="utf-8")
-            toml_utils.dump({"version": 1}, config_kit / "conf.toml")
-
-            # alpha → y, beta → n (blueprint#0 unchanged, not prompted)
-            answers = iter(["y", "n"])
-            with patch("builtins.input", side_effect=lambda: next(answers)):
-                result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-            bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            user_text = (config_kit / "blueprints" / "X.md").read_text()
-            # Alpha was accepted, Beta was declined
-            self.assertIn("New Alpha", user_text)
-            self.assertIn("Old Beta", user_text)
-            self.assertNotIn("New Beta", user_text)
-
-    def test_missing_ref_blueprint_file(self):
+    def test_new_blueprint_created(self):
+        """New blueprint in source but not in user kit → created."""
         from cypilot.commands.kit import migrate_kit
         from cypilot.utils import toml_utils
         with TemporaryDirectory() as td:
             td_p = Path(td)
+            _, _, source_dir, user_kit_dir = self._setup_kit(td_p)
+            # Add new blueprint to source
+            (source_dir / "blueprints" / "NEW.md").write_text(
+                '`@cpt:blueprint`\n```toml\nartifact = "NEW"\n```\n`@/cpt:blueprint`\n',
+                encoding="utf-8",
+            )
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
+            bp_actions = {r["blueprint"]: r["action"] for r in result.get("blueprints", [])}
+            self.assertEqual(bp_actions.get("NEW"), "created")
+            self.assertTrue((user_kit_dir / "blueprints" / "NEW.md").is_file())
+
+    def test_missing_ref_blueprint_dir(self):
+        from cypilot.commands.kit import migrate_kit
+        from cypilot.utils import toml_utils
+        with TemporaryDirectory() as td:
+            td_p = Path(td)
+            source_dir = td_p / "kit_source"
+            source_dir.mkdir(parents=True)
+            (source_dir / "blueprints").mkdir()
+            toml_utils.dump({"version": 2}, source_dir / "conf.toml")
             root = td_p / "proj"
             adapter = _bootstrap_project(root)
-            ref_dir = adapter / "kits" / "sdlc"
-            ref_dir.mkdir(parents=True)
-            (ref_dir / "blueprints").mkdir()
-            toml_utils.dump({"version": 2}, ref_dir / "conf.toml")
-            config_kit = adapter / "config" / "kits" / "sdlc"
-            config_kit.mkdir(parents=True)
-            toml_utils.dump({"version": 1}, config_kit / "conf.toml")
-            result = migrate_kit("sdlc", ref_dir, config_kit, interactive=False)
+            user_kit_dir = adapter / "kits" / "sdlc"
+            user_kit_dir.mkdir(parents=True)
+            toml_utils.dump({"version": 1}, user_kit_dir / "conf.toml")
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=False)
             # No .md files in ref blueprints dir → no blueprints migrated
             self.assertEqual(result["status"], "migrated")
             self.assertNotIn("blueprints", result)
@@ -1193,38 +1060,54 @@ class TestCmdKitMigrate(unittest.TestCase):
                 os.chdir(cwd)
 
     def _setup_migrate_project(self, td: Path, *, ref_ver: int = 2, user_ver: int = 1):
-        """Set up a project with a kit that has version drift for migration."""
+        """Set up a project with a kit that has version drift for migration.
+
+        Creates:
+        - Mock cache with kit source at ref_ver
+        - User kit dir at user_ver with blueprints + conf.toml
+        Returns (root, adapter, kit_slug, mock_cache_dir).
+        Tests should patch CACHE_DIR to mock_cache_dir.
+        """
         root = td / "proj"
         adapter = _bootstrap_project(root)
         kit_slug = "testkit"
-        ref_dir = adapter / "kits" / kit_slug
-        ref_bp = ref_dir / "blueprints"
-        ref_bp.mkdir(parents=True)
-        (ref_bp / "FEAT.md").write_text(
+        from cypilot.utils import toml_utils
+
+        bp_content = (
             "<!-- @cpt:blueprint -->\n```toml\n"
             f'artifact = "FEATURE"\nversion = {ref_ver}\n'
             "```\n<!-- /@cpt:blueprint -->\n\n"
-            "<!-- @cpt:heading -->\n# Feature Spec\n<!-- /@cpt:heading -->\n",
-            encoding="utf-8",
+            "<!-- @cpt:heading -->\n# Feature Spec\n<!-- /@cpt:heading -->\n"
         )
-        from cypilot.utils import toml_utils
-        toml_utils.dump({"version": ref_ver}, ref_dir / "conf.toml")
-        config_kit = adapter / "config" / "kits" / kit_slug
-        config_kit.mkdir(parents=True)
-        toml_utils.dump({"version": user_ver}, config_kit / "conf.toml")
-        (adapter / ".gen" / "kits").mkdir(parents=True, exist_ok=True)
-        return root, adapter, kit_slug
+
+        # Mock cache source at ref_ver
+        mock_cache = td / "mock_cache"
+        cache_kit = mock_cache / "kits" / kit_slug
+        cache_bp = cache_kit / "blueprints"
+        cache_bp.mkdir(parents=True)
+        (cache_bp / "FEAT.md").write_text(bp_content, encoding="utf-8")
+        toml_utils.dump({"version": ref_ver}, cache_kit / "conf.toml")
+
+        # User kit dir at user_ver
+        user_kit_dir = adapter / "kits" / kit_slug
+        user_bp = user_kit_dir / "blueprints"
+        user_bp.mkdir(parents=True)
+        (user_bp / "FEAT.md").write_text(bp_content, encoding="utf-8")
+        toml_utils.dump({"version": user_ver}, user_kit_dir / "conf.toml")
+
+        return root, adapter, kit_slug, mock_cache
 
     def test_migrate_kit_slug_not_found(self):
         from cypilot.commands.kit import cmd_kit_migrate
         with TemporaryDirectory() as td:
-            root, adapter, _ = self._setup_migrate_project(Path(td))
+            root, adapter, _, mock_cache = self._setup_migrate_project(Path(td))
             cwd = os.getcwd()
             try:
                 os.chdir(str(root))
                 buf = io.StringIO()
-                with redirect_stdout(buf):
-                    rc = cmd_kit_migrate(["--kit", "nonexistent"])
+                with patch("cypilot.commands.init.CACHE_DIR", mock_cache):
+                    with redirect_stdout(buf):
+                        rc = cmd_kit_migrate(["--kit", "nonexistent"])
                 self.assertEqual(rc, 2)
                 out = json.loads(buf.getvalue())
                 self.assertEqual(out["status"], "FAIL")
@@ -1233,21 +1116,15 @@ class TestCmdKitMigrate(unittest.TestCase):
 
     def test_migrate_all_kits_current(self):
         from cypilot.commands.kit import cmd_kit_migrate
-        from cypilot.utils import toml_utils
         with TemporaryDirectory() as td:
-            root, adapter, kit_slug = self._setup_migrate_project(Path(td), ref_ver=1, user_ver=1)
-            # Copy reference blueprints to user config so merge finds no changes
-            import shutil
-            ref_bp = adapter / "kits" / kit_slug / "blueprints"
-            user_bp = adapter / "config" / "kits" / kit_slug / "blueprints"
-            if ref_bp.is_dir() and not user_bp.is_dir():
-                shutil.copytree(ref_bp, user_bp)
+            root, adapter, kit_slug, mock_cache = self._setup_migrate_project(Path(td), ref_ver=1, user_ver=1)
             cwd = os.getcwd()
             try:
                 os.chdir(str(root))
                 buf = io.StringIO()
-                with redirect_stdout(buf):
-                    rc = cmd_kit_migrate([])
+                with patch("cypilot.commands.init.CACHE_DIR", mock_cache):
+                    with redirect_stdout(buf):
+                        rc = cmd_kit_migrate([])
                 self.assertEqual(rc, 0)
                 out = json.loads(buf.getvalue())
                 self.assertEqual(out["status"], "PASS")
@@ -1258,13 +1135,14 @@ class TestCmdKitMigrate(unittest.TestCase):
     def test_migrate_with_regen(self):
         from cypilot.commands.kit import cmd_kit_migrate
         with TemporaryDirectory() as td:
-            root, adapter, kit_slug = self._setup_migrate_project(Path(td))
+            root, adapter, kit_slug, mock_cache = self._setup_migrate_project(Path(td))
             cwd = os.getcwd()
             try:
                 os.chdir(str(root))
                 buf = io.StringIO()
-                with redirect_stdout(buf):
-                    rc = cmd_kit_migrate(["--kit", kit_slug])
+                with patch("cypilot.commands.init.CACHE_DIR", mock_cache):
+                    with redirect_stdout(buf):
+                        rc = cmd_kit_migrate(["--kit", kit_slug])
                 self.assertEqual(rc, 0)
                 out = json.loads(buf.getvalue())
                 self.assertEqual(out["kits_migrated"], 1)
@@ -1277,13 +1155,14 @@ class TestCmdKitMigrate(unittest.TestCase):
     def test_migrate_dry_run(self):
         from cypilot.commands.kit import cmd_kit_migrate
         with TemporaryDirectory() as td:
-            root, adapter, kit_slug = self._setup_migrate_project(Path(td))
+            root, adapter, kit_slug, mock_cache = self._setup_migrate_project(Path(td))
             cwd = os.getcwd()
             try:
                 os.chdir(str(root))
                 buf = io.StringIO()
-                with redirect_stdout(buf):
-                    rc = cmd_kit_migrate(["--dry-run"])
+                with patch("cypilot.commands.init.CACHE_DIR", mock_cache):
+                    with redirect_stdout(buf):
+                        rc = cmd_kit_migrate(["--dry-run"])
                 self.assertEqual(rc, 0)
                 out = json.loads(buf.getvalue())
                 self.assertTrue(out.get("dry_run"))
@@ -1296,15 +1175,16 @@ class TestCmdKitMigrate(unittest.TestCase):
     def test_migrate_regen_error_surfaces(self):
         from cypilot.commands.kit import cmd_kit_migrate
         with TemporaryDirectory() as td:
-            root, adapter, kit_slug = self._setup_migrate_project(Path(td))
+            root, adapter, kit_slug, mock_cache = self._setup_migrate_project(Path(td))
             cwd = os.getcwd()
             try:
                 os.chdir(str(root))
                 buf = io.StringIO()
                 err_buf = io.StringIO()
-                with patch("cypilot.utils.blueprint.process_kit", side_effect=RuntimeError("boom")):
-                    with redirect_stdout(buf), redirect_stderr(err_buf):
-                        rc = cmd_kit_migrate(["--kit", kit_slug])
+                with patch("cypilot.commands.init.CACHE_DIR", mock_cache):
+                    with patch("cypilot.utils.blueprint.process_kit", side_effect=RuntimeError("boom")):
+                        with redirect_stdout(buf), redirect_stderr(err_buf):
+                            rc = cmd_kit_migrate(["--kit", kit_slug])
                 self.assertEqual(rc, 0)
                 out = json.loads(buf.getvalue())
                 self.assertEqual(out["status"], "FAIL")
@@ -2623,10 +2503,16 @@ class TestOpenEditorForMarkerRegressions(unittest.TestCase):
 
 
 class TestMigrateKitModify(unittest.TestCase):
-    """Interactive migrate_kit with modify (editor) option."""
+    """migrate_kit behavior with new hash-based layout.
+
+    With conservative merge (no .prev/), interactive marker prompts are not
+    triggered — all user customizations are preserved silently.  The modify
+    (editor) functionality is tested at the _three_way_merge_blueprint level
+    in TestModifyOverrides.
+    """
 
     def _setup_kit(self, td_p, old_heading="Feature v1", new_heading="Feature v2",
-                   user_heading="Feature v1", ref_ver=2, user_ver=1):
+                   user_heading="Feature v1", ref_ver=2, user_ver=1, with_hashes=True):
         root = td_p / "proj"
         adapter = _bootstrap_project(root)
         from cypilot.utils import toml_utils
@@ -2636,161 +2522,263 @@ class TestMigrateKitModify(unittest.TestCase):
             '`@cpt:heading:title`\n```toml\nid = "title"\nlevel = 1\ntemplate = "{heading}"\n```\n`@/cpt:heading:title`\n'
         )
 
-        ref_dir = adapter / "kits" / "sdlc"
-        ref_bp = ref_dir / "blueprints"
-        ref_bp.mkdir(parents=True)
-        (ref_bp / "FEAT.md").write_text(
+        source_dir = td_p / "kit_source"
+        src_bp = source_dir / "blueprints"
+        src_bp.mkdir(parents=True)
+        (src_bp / "FEAT.md").write_text(
             bp_template.format(heading=new_heading), encoding="utf-8",
         )
-        toml_utils.dump({"version": ref_ver}, ref_dir / "conf.toml")
+        toml_utils.dump({"version": ref_ver}, source_dir / "conf.toml")
 
-        prev_bp = ref_dir / ".prev" / "blueprints"
-        prev_bp.mkdir(parents=True)
-        (prev_bp / "FEAT.md").write_text(
-            bp_template.format(heading=old_heading), encoding="utf-8",
-        )
+        if with_hashes:
+            import hashlib
+            from cypilot.commands.kit import _write_blueprint_hashes
+            old_bp_content = bp_template.format(heading=old_heading)
+            old_hash = hashlib.sha256(old_bp_content.encode("utf-8")).hexdigest()
+            _write_blueprint_hashes(source_dir, str(user_ver), {"blueprints/FEAT.md": old_hash})
 
-        config_kit = adapter / "config" / "kits" / "sdlc"
-        user_bp = config_kit / "blueprints"
+        user_kit_dir = adapter / "kits" / "sdlc"
+        user_bp = user_kit_dir / "blueprints"
         user_bp.mkdir(parents=True)
         (user_bp / "FEAT.md").write_text(
             bp_template.format(heading=user_heading), encoding="utf-8",
         )
-        toml_utils.dump({"version": user_ver}, config_kit / "conf.toml")
+        toml_utils.dump({"version": user_ver}, user_kit_dir / "conf.toml")
 
-        return root, adapter, ref_dir, config_kit
+        return root, adapter, source_dir, user_kit_dir
 
-    def test_modify_updated_marker(self):
-        """Interactive 'm' on updated marker → uses editor result."""
+    def test_unmodified_auto_updated_interactive(self):
+        """Hash matches → auto_updated, no interactive prompts needed."""
         from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-
-        custom_content = (
-            '`@cpt:heading:title`\n```toml\nid = "title"\nlevel = 1\n'
-            'template = "Manually Merged"\n```\n`@/cpt:heading:title`\n'
-        )
 
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="m"):
-                with patch("cypilot.commands.kit._open_editor_for_marker",
-                           return_value=custom_content):
-                    result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
+            _, _, source_dir, user_kit_dir = self._setup_kit(Path(td))
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
 
             bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            self.assertIn("heading:title", bp.get("markers_modified", []))
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
-            self.assertIn("Manually Merged", user_text)
+            self.assertEqual(bp["action"], "auto_updated")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
+            self.assertIn("Feature v2", user_text)
 
-    def test_modify_updated_marker_abort(self):
-        """Interactive 'm' then editor abort → marker declined."""
+    def test_customized_preserved_interactive(self):
+        """Hash mismatch → conservative merge, user preserved without prompts."""
         from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
 
         with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit = self._setup_kit(Path(td))
-            with patch("builtins.input", return_value="m"):
-                with patch("cypilot.commands.kit._open_editor_for_marker",
-                           return_value=None):
-                    result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-
-            bp = result["blueprints"][0]
-            # Updated marker declined (editor aborted) → entire blueprint declined
-            self.assertEqual(bp["action"], "declined")
-
-    def test_modify_skipped_marker(self):
-        """Interactive 'm' on customized (skipped) marker → uses editor result."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-
-        custom_content = (
-            '`@cpt:heading:title`\n```toml\nid = "title"\nlevel = 1\n'
-            'template = "Custom Merge"\n```\n`@/cpt:heading:title`\n'
-        )
-
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit = self._setup_kit(
+            _, _, source_dir, user_kit_dir = self._setup_kit(
                 Path(td), user_heading="My Custom",
             )
-            with patch("builtins.input", return_value="m"):
-                with patch("cypilot.commands.kit._open_editor_for_marker",
-                           return_value=custom_content):
-                    result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
 
             bp = result["blueprints"][0]
-            self.assertEqual(bp["action"], "merged")
-            self.assertIn("heading:title", bp.get("markers_modified", []))
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
-            self.assertIn("Custom Merge", user_text)
-
-    def test_modify_skipped_marker_abort(self):
-        """Interactive 'm' on customized marker, editor abort → keeps user version."""
-        from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
-
-        with TemporaryDirectory() as td:
-            _, _, ref_dir, config_kit = self._setup_kit(
-                Path(td), user_heading="My Custom",
-            )
-            with patch("builtins.input", return_value="m"):
-                with patch("cypilot.commands.kit._open_editor_for_marker",
-                           return_value=None):
-                    result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-
-            user_text = (config_kit / "blueprints" / "FEAT.md").read_text()
+            self.assertEqual(bp["action"], "no_marker_changes")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
             self.assertIn("My Custom", user_text)
 
-    def test_modify_inserted_marker(self):
-        """Interactive 'm' on new (inserted) marker → uses editor result."""
+    def test_no_hash_customized_preserved(self):
+        """No hashes → conservative merge, user customization preserved."""
         from cypilot.commands.kit import migrate_kit
-        from unittest.mock import patch
+
+        with TemporaryDirectory() as td:
+            _, _, source_dir, user_kit_dir = self._setup_kit(
+                Path(td), user_heading="My Custom", with_hashes=False,
+            )
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
+
+            bp = result["blueprints"][0]
+            self.assertEqual(bp["action"], "no_marker_changes")
+            user_text = (user_kit_dir / "blueprints" / "FEAT.md").read_text()
+            self.assertIn("My Custom", user_text)
+
+    def test_new_blueprint_created_interactive(self):
+        """New blueprint in source → created in user kit."""
+        from cypilot.commands.kit import migrate_kit
         from cypilot.utils import toml_utils
 
         with TemporaryDirectory() as td:
             td_p = Path(td)
-            root = td_p / "proj"
-            adapter = _bootstrap_project(root)
-
-            bp_v1 = (
-                '`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "X"\n```\n`@/cpt:blueprint`\n\n'
-                '`@cpt:heading:title`\n```toml\nid = "title"\nlevel = 1\ntemplate = "Title"\n```\n`@/cpt:heading:title`\n'
+            _, _, source_dir, user_kit_dir = self._setup_kit(td_p)
+            (source_dir / "blueprints" / "NEW.md").write_text(
+                '`@cpt:blueprint`\n```toml\nartifact = "NEW"\n```\n`@/cpt:blueprint`\n',
+                encoding="utf-8",
             )
-            bp_v2 = bp_v1 + (
-                '`@cpt:check:newcheck`\n```toml\nid = "newcheck"\n```\nNew check content\n`@/cpt:check:newcheck`\n'
+            result = migrate_kit("sdlc", source_dir, user_kit_dir, interactive=True)
+            bp_actions = {r["blueprint"]: r["action"] for r in result.get("blueprints", [])}
+            self.assertEqual(bp_actions.get("NEW"), "created")
+            self.assertTrue((user_kit_dir / "blueprints" / "NEW.md").is_file())
+
+
+class TestMigrateKitInteractivePath(unittest.TestCase):
+    """Cover interactive merge path in migrate_kit when has_changes=True.
+
+    With conservative merge, has_changes is True when user deleted a marker
+    that exists in the reference.  auto_approve=True exercises the interactive
+    block without stdin.
+    """
+
+    def _make_bp(self, markers):
+        """Build a blueprint with given markers dict {key: content}."""
+        parts = ['`@cpt:blueprint`\n```toml\nkit = "sdlc"\nartifact = "TEST"\n```\n`@/cpt:blueprint`\n\n']
+        for key, content in markers.items():
+            parts.append(
+                f'`@cpt:heading:{key}`\n```toml\nid = "{key}"\nlevel = 2\n```\n{content}\n`@/cpt:heading:{key}`\n\n'
             )
+        return "".join(parts)
 
-            ref_dir = adapter / "kits" / "sdlc"
-            ref_bp = ref_dir / "blueprints"
-            ref_bp.mkdir(parents=True)
-            (ref_bp / "X.md").write_text(bp_v2, encoding="utf-8")
-            toml_utils.dump({"version": 2}, ref_dir / "conf.toml")
+    def _setup(self, td_p, ref_markers, user_markers, ref_ver=2, user_ver=1):
+        from cypilot.utils import toml_utils
+        root = td_p / "proj"
+        adapter = _bootstrap_project(root)
 
-            prev_bp = ref_dir / ".prev" / "blueprints"
-            prev_bp.mkdir(parents=True)
-            (prev_bp / "X.md").write_text(bp_v1, encoding="utf-8")
+        source_dir = td_p / "kit_source"
+        src_bp = source_dir / "blueprints"
+        src_bp.mkdir(parents=True)
+        (src_bp / "TEST.md").write_text(self._make_bp(ref_markers), encoding="utf-8")
+        toml_utils.dump({"version": ref_ver}, source_dir / "conf.toml")
 
-            config_kit = adapter / "config" / "kits" / "sdlc"
-            user_bp = config_kit / "blueprints"
-            user_bp.mkdir(parents=True)
-            (user_bp / "X.md").write_text(bp_v1, encoding="utf-8")
-            toml_utils.dump({"version": 1}, config_kit / "conf.toml")
+        user_kit_dir = adapter / "kits" / "sdlc"
+        user_bp = user_kit_dir / "blueprints"
+        user_bp.mkdir(parents=True)
+        (user_bp / "TEST.md").write_text(self._make_bp(user_markers), encoding="utf-8")
+        toml_utils.dump({"version": user_ver}, user_kit_dir / "conf.toml")
+        return source_dir, user_kit_dir
 
-            custom_content = (
-                '`@cpt:check:newcheck`\n```toml\nid = "newcheck"\n```\n'
-                'Edited check content\n`@/cpt:check:newcheck`\n'
+    def test_interactive_deleted_marker_auto_approve(self):
+        """Deleted marker triggers interactive path; auto_approve restores it."""
+        from cypilot.commands.kit import migrate_kit
+        with TemporaryDirectory() as td:
+            ref_markers = {"alpha": "Alpha content", "beta": "Beta content"}
+            user_markers = {"alpha": "Alpha customized"}  # beta deleted
+            source_dir, user_kit_dir = self._setup(
+                Path(td), ref_markers, user_markers, with_hashes=False,
             )
+            result = migrate_kit(
+                "sdlc", source_dir, user_kit_dir,
+                interactive=True, auto_approve=True,
+            )
+            bp_actions = {r["blueprint"]: r["action"] for r in result.get("blueprints", [])}
+            self.assertEqual(bp_actions.get("TEST"), "merged")
+            # beta should be restored (auto-approved)
+            txt = (user_kit_dir / "blueprints" / "TEST.md").read_text()
+            self.assertIn("Beta content", txt)
 
-            with patch("builtins.input", return_value="m"):
-                with patch("cypilot.commands.kit._open_editor_for_marker",
-                           return_value=custom_content):
-                    result = migrate_kit("sdlc", ref_dir, config_kit, interactive=True)
-
-            bp = result["blueprints"][0]
+    def test_interactive_skipped_and_deleted_auto_approve(self):
+        """Both skipped (customized) and deleted markers handled."""
+        from cypilot.commands.kit import migrate_kit
+        with TemporaryDirectory() as td:
+            ref_markers = {"a": "Ref A", "b": "Ref B", "c": "Ref C"}
+            user_markers = {"a": "User A custom", "b": "Ref B"}  # c deleted, a customized
+            source_dir, user_kit_dir = self._setup(
+                Path(td), ref_markers, user_markers, with_hashes=False,
+            )
+            result = migrate_kit(
+                "sdlc", source_dir, user_kit_dir,
+                interactive=True, auto_approve=True,
+            )
+            bp = next(r for r in result["blueprints"] if r["blueprint"] == "TEST")
             self.assertEqual(bp["action"], "merged")
-            self.assertIn("check:newcheck", bp.get("markers_modified", []))
-            user_text = (config_kit / "blueprints" / "X.md").read_text()
-            self.assertIn("Edited check content", user_text)
+            txt = (user_kit_dir / "blueprints" / "TEST.md").read_text()
+            # c restored, a overwritten (force), b kept
+            self.assertIn("Ref C", txt)
+
+    def test_noninteractive_deleted_marker_merged(self):
+        """Non-interactive path with deleted markers → merged."""
+        from cypilot.commands.kit import migrate_kit
+        with TemporaryDirectory() as td:
+            ref_markers = {"alpha": "Alpha", "beta": "Beta"}
+            user_markers = {"alpha": "Alpha"}  # beta deleted
+            source_dir, user_kit_dir = self._setup(
+                Path(td), ref_markers, user_markers, with_hashes=False,
+            )
+            result = migrate_kit(
+                "sdlc", source_dir, user_kit_dir,
+                interactive=False,
+            )
+            bp_actions = {r["blueprint"]: r["action"] for r in result.get("blueprints", [])}
+            self.assertEqual(bp_actions.get("TEST"), "merged")
+
+    def test_dry_run_no_file_written(self):
+        """dry_run + has_changes → merged but no file written."""
+        from cypilot.commands.kit import migrate_kit
+        with TemporaryDirectory() as td:
+            ref_markers = {"alpha": "Alpha", "beta": "Beta"}
+            user_markers = {"alpha": "Alpha"}  # beta deleted
+            source_dir, user_kit_dir = self._setup(
+                Path(td), ref_markers, user_markers, with_hashes=False,
+            )
+            orig_text = (user_kit_dir / "blueprints" / "TEST.md").read_text()
+            result = migrate_kit(
+                "sdlc", source_dir, user_kit_dir,
+                dry_run=True,
+            )
+            # File should not have changed
+            self.assertEqual(
+                (user_kit_dir / "blueprints" / "TEST.md").read_text(), orig_text,
+            )
+
+    def _setup(self, td_p, ref_markers, user_markers, ref_ver=2, user_ver=1, with_hashes=True):
+        from cypilot.utils import toml_utils
+        root = td_p / "proj"
+        adapter = _bootstrap_project(root)
+
+        source_dir = td_p / "kit_source"
+        src_bp = source_dir / "blueprints"
+        src_bp.mkdir(parents=True)
+        ref_text = self._make_bp(ref_markers)
+        (src_bp / "TEST.md").write_text(ref_text, encoding="utf-8")
+        toml_utils.dump({"version": ref_ver}, source_dir / "conf.toml")
+
+        if with_hashes:
+            import hashlib
+            from cypilot.commands.kit import _write_blueprint_hashes
+            h = hashlib.sha256(ref_text.encode("utf-8")).hexdigest()
+            _write_blueprint_hashes(source_dir, str(user_ver), {"blueprints/TEST.md": h})
+
+        user_kit_dir = adapter / "kits" / "sdlc"
+        user_bp = user_kit_dir / "blueprints"
+        user_bp.mkdir(parents=True)
+        (user_bp / "TEST.md").write_text(self._make_bp(user_markers), encoding="utf-8")
+        toml_utils.dump({"version": user_ver}, user_kit_dir / "conf.toml")
+        return source_dir, user_kit_dir
+
+
+class TestDetectAndMigrateLayoutRollback(unittest.TestCase):
+    """Cover rollback path in _detect_and_migrate_layout on failure."""
+
+    def test_rollback_on_failure(self):
+        """Simulated failure during migration triggers rollback."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            config_kit = cypilot_dir / "config" / "kits" / "sdlc"
+            bp_dir = config_kit / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD v1\n")
+            (config_kit / "conf.toml").write_text('slug = "sdlc"\n')
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Skill\n")
+            # Old reference too
+            old_ref = cypilot_dir / "kits" / "sdlc"
+            old_ref.mkdir(parents=True)
+            (old_ref / "ref.txt").write_text("old ref")
+
+            # Make shutil.rmtree fail on the slug_dir cleanup (step 4)
+            orig_rmtree = shutil.rmtree
+            call_count = [0]
+            def _rmtree_fail(path, *a, **kw):
+                call_count[0] += 1
+                # Fail on the 2nd rmtree call (clearing config_kit before copytree from gen)
+                if call_count[0] == 2:
+                    raise PermissionError("simulated failure")
+                return orig_rmtree(path, *a, **kw)
+
+            with patch("shutil.rmtree", side_effect=_rmtree_fail):
+                result = _detect_and_migrate_layout(cypilot_dir)
+
+            self.assertIn("FAILED", result.get("sdlc", ""))
+            # config/kits/sdlc/ should be restored
+            self.assertTrue(config_kit.is_dir())
 
 
 class TestModifyOverrides(unittest.TestCase):
@@ -2859,6 +2847,211 @@ class TestModifyOverrides(unittest.TestCase):
         _, report = _three_way_merge_blueprint(old, new, user)
         self.assertIn("modified", report)
         self.assertEqual(report["modified"], [])
+
+
+# =========================================================================
+# _detect_and_migrate_layout
+# =========================================================================
+
+class TestDetectAndMigrateLayout(unittest.TestCase):
+    """Tests for _detect_and_migrate_layout — old→new kit directory migration."""
+
+    def test_no_migration_when_no_old_layout(self):
+        """Returns empty dict when config/kits/ or .gen/kits/ don't exist."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result, {})
+
+    def test_no_migration_when_only_config_kits(self):
+        """Returns empty when .gen/kits/ doesn't exist."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            (cypilot_dir / "config" / "kits" / "sdlc" / "blueprints").mkdir(parents=True)
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result, {})
+
+    def test_no_migration_when_only_gen_kits(self):
+        """Returns empty when config/kits/ doesn't exist."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            (cypilot_dir / ".gen" / "kits" / "sdlc").mkdir(parents=True)
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result, {})
+
+    def test_skips_kit_without_blueprints(self):
+        """Kit dir in config/kits/ without blueprints/ is skipped."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            (cypilot_dir / "config" / "kits" / "sdlc").mkdir(parents=True)
+            (cypilot_dir / ".gen" / "kits" / "sdlc").mkdir(parents=True)
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result, {})
+
+    def test_skips_kit_without_gen(self):
+        """Kit with blueprints/ but no .gen/kits/{slug}/ is skipped."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            (cypilot_dir / "config" / "kits" / "sdlc" / "blueprints").mkdir(parents=True)
+            (cypilot_dir / ".gen" / "kits").mkdir(parents=True)
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result, {})
+
+    def test_dry_run_reports_without_moving(self):
+        """dry_run=True reports 'would_migrate' without moving files."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            bp_dir = cypilot_dir / "config" / "kits" / "sdlc" / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD\n")
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Skill\n")
+            result = _detect_and_migrate_layout(cypilot_dir, dry_run=True)
+            self.assertEqual(result.get("sdlc"), "would_migrate")
+            # Files should NOT have moved
+            self.assertTrue(bp_dir.is_dir())
+            self.assertFalse((cypilot_dir / "kits" / "sdlc" / "blueprints").exists())
+
+    def test_full_migration(self):
+        """Full migration moves blueprints→kits/, gen→config/kits/."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            # Old layout: config/kits/sdlc/blueprints/ + conf.toml
+            config_kit = cypilot_dir / "config" / "kits" / "sdlc"
+            bp_dir = config_kit / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD v1\n")
+            (config_kit / "conf.toml").write_text('slug = "sdlc"\nversion = 1\n')
+            # Old layout: .gen/kits/sdlc/ with generated outputs
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Generated Skill\n")
+            (gen_kit / "constraints.toml").write_text("[artifacts]\n")
+
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result.get("sdlc"), "migrated")
+            # Blueprints moved to kits/sdlc/blueprints/
+            new_bp = cypilot_dir / "kits" / "sdlc" / "blueprints" / "PRD.md"
+            self.assertTrue(new_bp.is_file())
+            self.assertEqual(new_bp.read_text(), "# PRD v1\n")
+            # conf.toml moved to kits/sdlc/conf.toml
+            new_conf = cypilot_dir / "kits" / "sdlc" / "conf.toml"
+            self.assertTrue(new_conf.is_file())
+            # config/kits/sdlc/ now has generated outputs from .gen/
+            self.assertTrue((config_kit / "SKILL.md").is_file())
+            self.assertEqual((config_kit / "SKILL.md").read_text(), "# Generated Skill\n")
+            # .gen/kits/sdlc/ removed
+            self.assertFalse(gen_kit.exists())
+            # Backup cleaned up
+            self.assertFalse((cypilot_dir / ".layout_backup").exists())
+
+    def test_migration_with_old_ref_kit(self):
+        """Old kits/{slug}/ reference is backed up and replaced."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            config_kit = cypilot_dir / "config" / "kits" / "sdlc"
+            bp_dir = config_kit / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD\n")
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Skill\n")
+            # Old reference copy
+            old_ref = cypilot_dir / "kits" / "sdlc"
+            old_ref.mkdir(parents=True)
+            (old_ref / "old_ref.txt").write_text("old reference")
+
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result.get("sdlc"), "migrated")
+            # Old ref replaced with user blueprints
+            self.assertTrue((cypilot_dir / "kits" / "sdlc" / "blueprints" / "PRD.md").is_file())
+            self.assertFalse((cypilot_dir / "kits" / "sdlc" / "old_ref.txt").exists())
+
+    def test_migration_with_core_toml(self):
+        """core.toml kit path is updated during migration."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            config_kit = cypilot_dir / "config" / "kits" / "sdlc"
+            bp_dir = config_kit / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD\n")
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Skill\n")
+            # Write core.toml with old kit path
+            config_dir = cypilot_dir / "config"
+            (config_dir / "core.toml").write_text(
+                '[kits.sdlc]\npath = ".gen/kits/sdlc"\n'
+            )
+
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result.get("sdlc"), "migrated")
+            content = (config_dir / "core.toml").read_text()
+            self.assertIn("config/kits/sdlc", content)
+
+    def test_migration_with_core_toml_different_kit_id(self):
+        """core.toml kit path updated when kit ID differs from dir slug."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            config_kit = cypilot_dir / "config" / "kits" / "sdlc"
+            bp_dir = config_kit / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD\n")
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Skill\n")
+            config_dir = cypilot_dir / "config"
+            (config_dir / "core.toml").write_text(
+                '[kits.cypilot-sdlc]\nformat = "Cypilot"\npath = ".gen/kits/sdlc"\n'
+            )
+
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result.get("sdlc"), "migrated")
+            content = (config_dir / "core.toml").read_text()
+            self.assertIn("config/kits/sdlc", content)
+            self.assertNotIn(".gen/kits/sdlc", content)
+
+    def test_gen_kits_dir_removed_when_empty(self):
+        """After migration, .gen/kits/ is removed if empty."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            bp_dir = cypilot_dir / "config" / "kits" / "sdlc" / "blueprints"
+            bp_dir.mkdir(parents=True)
+            (bp_dir / "PRD.md").write_text("# PRD\n")
+            gen_kit = cypilot_dir / ".gen" / "kits" / "sdlc"
+            gen_kit.mkdir(parents=True)
+            (gen_kit / "SKILL.md").write_text("# Skill\n")
+
+            _detect_and_migrate_layout(cypilot_dir)
+            self.assertFalse((cypilot_dir / ".gen" / "kits").exists())
+
+    def test_multiple_kits_migrated(self):
+        """Multiple kits are migrated in one pass."""
+        from cypilot.commands.kit import _detect_and_migrate_layout
+        with TemporaryDirectory() as td:
+            cypilot_dir = Path(td)
+            for slug in ("sdlc", "custom"):
+                bp = cypilot_dir / "config" / "kits" / slug / "blueprints"
+                bp.mkdir(parents=True)
+                (bp / "PRD.md").write_text(f"# {slug}\n")
+                gen = cypilot_dir / ".gen" / "kits" / slug
+                gen.mkdir(parents=True)
+                (gen / "SKILL.md").write_text(f"# {slug} Skill\n")
+            result = _detect_and_migrate_layout(cypilot_dir)
+            self.assertEqual(result.get("sdlc"), "migrated")
+            self.assertEqual(result.get("custom"), "migrated")
 
 
 if __name__ == "__main__":

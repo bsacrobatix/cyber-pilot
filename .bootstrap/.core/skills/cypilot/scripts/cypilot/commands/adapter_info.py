@@ -267,41 +267,29 @@ def cmd_adapter_info(argv: list[str]) -> int:
 
     # Kit details: versions, blueprints, drift
     kit_details = {}
-    kits_ref_dir = adapter_dir / "kits"
+    kits_user_dir = adapter_dir / "kits"
     config_kits_dir = adapter_dir / "config" / "kits"
-    gen_kits_dir = adapter_dir / ".gen" / "kits"
-    if kits_ref_dir.is_dir():
-        for kit_dir in sorted(kits_ref_dir.iterdir()):
+    if kits_user_dir.is_dir():
+        for kit_dir in sorted(kits_user_dir.iterdir()):
             if not kit_dir.is_dir():
                 continue
             slug = kit_dir.name
             kd: dict = {"slug": slug}
-            # Reference version
-            ref_conf = kit_dir / "conf.toml"
-            if ref_conf.is_file():
-                kd.update(_read_kit_conf(ref_conf))
-                kd["ref_version"] = kd.get("version")
-            # Config (user) version
-            cfg_conf = config_kits_dir / slug / "conf.toml"
-            if cfg_conf.is_file():
-                cfg_data = _read_kit_conf(cfg_conf)
-                kd["config_version"] = cfg_data.get("version")
-                if kd.get("ref_version") and kd["config_version"]:
-                    try:
-                        kd["drift"] = int(kd["ref_version"]) != int(kd["config_version"])
-                    except (ValueError, TypeError):
-                        kd["drift"] = str(kd["ref_version"]) != str(kd["config_version"])
-            # Blueprints
-            bp_dir = config_kits_dir / slug / "blueprints"
+            # User version (from kits/{slug}/conf.toml)
+            user_conf = kit_dir / "conf.toml"
+            if user_conf.is_file():
+                kd.update(_read_kit_conf(user_conf))
+            # Blueprints (from kits/{slug}/blueprints/)
+            bp_dir = kit_dir / "blueprints"
             if bp_dir.is_dir():
                 bps = sorted(f.stem for f in bp_dir.glob("*.md"))
                 kd["blueprints"] = bps
-            # Generated artifact kinds
-            gen_art_dir = gen_kits_dir / slug / "artifacts"
+            # Generated artifact kinds (from config/kits/{slug}/artifacts/)
+            gen_art_dir = config_kits_dir / slug / "artifacts"
             if gen_art_dir.is_dir():
                 kd["artifact_kinds"] = sorted(d.name for d in gen_art_dir.iterdir() if d.is_dir())
-            # Generated workflows
-            gen_wf_dir = gen_kits_dir / slug / "workflows"
+            # Generated workflows (from config/kits/{slug}/workflows/)
+            gen_wf_dir = config_kits_dir / slug / "workflows"
             if gen_wf_dir.is_dir():
                 kd["workflows"] = sorted(f.stem for f in gen_wf_dir.glob("*.md"))
             kit_details[slug] = kd

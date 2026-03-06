@@ -3,23 +3,26 @@ Update command — refresh an existing Cypilot installation in-place.
 
 Safety rules for config/:
 - .core/  → full replace from cache (read-only reference)
-- .gen/   → full regenerate from USER's blueprints in config/kits/
-- config/ → NEVER overwrite user files:
+- .gen/   → aggregate files only (AGENTS.md, SKILL.md, README.md)
+- config/ → generated kit outputs + user config (NEVER overwrite user files):
   - core.toml, artifacts.toml   → only via migration when version is higher
   - AGENTS.md, SKILL.md, README.md → only create if missing
-  - kits/{slug}/blueprints/     → skip if same version; warn if higher (migration needed)
+  - kits/{slug}/                → generated outputs (artifacts/, workflows/, SKILL.md, scripts/)
+- kits/{slug}/ → user-editable blueprints + conf.toml
 
 Pipeline:
 1. Replace .core/ from cache
-2. Update kit reference copies (cypilot/kits/{slug}/) from cache
-3. Compare blueprint versions: skip same, warn if migration needed
-4. Regenerate .gen/ from user's blueprints
+2. Update kits: copy source → kits/{slug}/, migrate if version drift
+3. Regenerate config/kits/{slug}/ from user's blueprints in kits/{slug}/
+4. Write aggregate .gen/ files
 5. Ensure config/ scaffold files exist (create only if missing)
 6. Run self-check to verify kit integrity
 
 @cpt-flow:cpt-cypilot-flow-version-config-update:p1
 @cpt-algo:cpt-cypilot-algo-version-config-update-pipeline:p1
 @cpt-algo:cpt-cypilot-algo-version-config-compare-versions:p1
+@cpt-algo:cpt-cypilot-algo-version-config-layout-restructure:p1
+@cpt-state:cpt-cypilot-state-version-config-installation:p1
 @cpt-dod:cpt-cypilot-dod-version-config-update:p1
 """
 
@@ -140,6 +143,7 @@ def cmd_update(argv: List[str]) -> int:
                 ui.result({"status": "ABORTED", "message": "Update aborted by user."})
                 return 0
 
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-replace-core-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-replace-core
     # ── Step 1: Replace .core/ from cache (always force) ─────────────────
     ui.step("Updating core files from cache...")
@@ -158,9 +162,32 @@ def cmd_update(argv: List[str]) -> int:
     for name, action in copy_results.items():
         ui.file_action(f".core/{name}/", action)
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-replace-core
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-replace-core-algo
 
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-detect-layout-algo
+    # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-detect-layout
+    # ── Step 1b: Detect and migrate old layout ───────────────────────────
+    if not args.dry_run:
+        from .kit import _detect_and_migrate_layout
+        layout_migrated = _detect_and_migrate_layout(cypilot_dir, dry_run=False)
+        if layout_migrated:
+            ui.step("Migrating directory layout...")
+            for slug, status in layout_migrated.items():
+                ui.substep(f"{slug}: {status}")
+            actions["layout_migration"] = layout_migrated
+    # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-detect-layout
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-detect-layout-algo
+
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-migrate-config-algo
+    # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-migrate-config
+    # (config migration handled implicitly by update_kit during step 2)
+    # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-migrate-config
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-migrate-config-algo
+
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-update-kits-algo
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-regen-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-kits
-    # ── Step 2: Update kits (ref copy, migrate, regen .gen/) ─────────────
+    # ── Step 2: Update kits ──────────────────────────────────────────────
     ui.step("Updating kits...")
     from .kit import update_kit
 
@@ -238,6 +265,8 @@ def cmd_update(argv: List[str]) -> int:
 
     actions["kits"] = kit_results
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-update-kits
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-regen-algo
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-update-kits-algo
 
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-regenerate-agents
     # Write .gen/AGENTS.md
@@ -279,6 +308,7 @@ def cmd_update(argv: List[str]) -> int:
         (gen_dir / "README.md").write_text(_gen_readme(), encoding="utf-8")
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-regenerate-agents
 
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-scaffold-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-ensure-scaffold
     # ── Step 5: Ensure config/ scaffold (create only if missing) ─────────
     ui.step("Ensuring config/ scaffold...")
@@ -307,6 +337,7 @@ def cmd_update(argv: List[str]) -> int:
         root_claude_action = _inject_root_claude(project_root, install_rel)
         actions["root_claude"] = root_claude_action
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-ensure-scaffold
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-scaffold-algo
 
     # ── Auto-regenerate agent integrations if real changes happened ────
     if not args.dry_run:

@@ -37,11 +37,11 @@
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-cypilot-featstatus-core-infra`
+- [x] `p1` - **ID**: `cpt-cypilot-featstatus-core-infra`
 
 ## 1. Feature Context
 
-- [ ] `p1` - `cpt-cypilot-feature-core-infra`
+- [x] `p1` - `cpt-cypilot-feature-core-infra`
 
 ### 1. Overview
 
@@ -110,7 +110,7 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 
 ### Project Initialization
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-core-infra-project-init`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-core-infra-project-init`
 
 **Actors**:
 
@@ -136,7 +136,7 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 5. [x] - `p2` - Copy skill bundle from `~/.cypilot/cache/` into install directory - `inst-copy-skill`
 6. [x] - `p1` - Algorithm: define root system using `cpt-cypilot-algo-core-infra-define-root-system` - `inst-define-root`
 7. [x] - `p1` - Algorithm: create config directory using `cpt-cypilot-algo-core-infra-create-config` - `inst-create-config`
-8. [ ] - `p1` - Prompt user for per-kit config output directory (default: `{cypilot_path}/config/kits/<slug>/`) - `inst-prompt-kit-config`
+8. [x] - `p1` - Prompt user for per-kit config output directory (default: `{cypilot_path}/config/kits/<slug>/`) - `inst-prompt-kit-config`
 9. [x] - `p2` - Delegate kit installation to Kit Manager (Feature 2 boundary) - `inst-delegate-kits`
 10. [x] - `p2` - Delegate agent entry point generation to Agent Generator (Feature 5 boundary) - `inst-delegate-agents`
 11. [x] - `p1` - Algorithm: inject root AGENTS.md using `cpt-cypilot-algo-core-infra-inject-root-agents` - `inst-inject-agents`
@@ -197,7 +197,7 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 
 ### Create Config Directory
 
-- [ ] `p1` - **ID**: `cpt-cypilot-algo-core-infra-create-config`
+- [x] `p1` - **ID**: `cpt-cypilot-algo-core-infra-create-config`
 
 **Input**: Cypilot directory path, root system definition
 
@@ -205,7 +205,7 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 
 **Steps**:
 1. [x] - `p1` - Create cypilot directory if absent - `inst-mkdir-config`
-2. [ ] - `p1` - Create `{cypilot_path}/kits/` directory - `inst-mkdir-kits`
+2. [x] - `p1` - Create `{cypilot_path}/kits/` directory - `inst-mkdir-kits`
 3. [x] - `p1` - Write `core.toml` with: root system definition (name, slug, kit), kits registration (including per-kit config output paths) - `inst-write-core-toml`
 4. [x] - `p1` - Write `artifacts.toml` with default registry (systems, autodetect rules, codebase, ignore patterns) - `inst-write-artifacts-toml`
 5. [x] - `p2` - Validate files against schemas before final write - `inst-validate-schemas`
@@ -422,7 +422,7 @@ The system **MUST** provide a cache mechanism in the CLI proxy that downloads th
 
 ### Init Creates Full Config
 
-- [ ] `p1` - **ID**: `cpt-cypilot-dod-core-infra-init-config`
+- [x] `p1` - **ID**: `cpt-cypilot-dod-core-infra-init-config`
 
 The system **MUST** provide a `cpt init` command that copies skill bundle from cache, defines the root system from the project directory name, creates `{cypilot_path}/kits/` directory, creates `{cypilot_path}/config/core.toml` with system and kit registrations (including per-kit config output paths), creates `{cypilot_path}/config/artifacts.toml` with default SDLC autodetect rules, injects the root `AGENTS.md` managed block, and creates `{cypilot_path}/config/AGENTS.md` with default WHEN rules.
 

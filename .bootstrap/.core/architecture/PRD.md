@@ -184,7 +184,7 @@ The system consists of two layers:
 
 #### Global CLI Installer
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-installer`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-installer`
 
 The system MUST provide a global CLI tool installable via `pipx install git+https://github.com/cyberfabric/cyber-pilot.git`. The tool MUST be available as both `cypilot` and the short alias `cpt`. The global tool MUST have zero built-in commands — it is a pure proxy shell. On every invocation the tool MUST:
 
@@ -200,7 +200,7 @@ The tool MUST NOT contain any skill logic, workflow logic, or command implementa
 
 #### Project Initialization
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-init`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-init`
 
 The system MUST provide an interactive `cpt init` command that bootstraps Cypilot in a project. Before proceeding, the command MUST check whether Cypilot is already installed in the project. If an existing installation is detected, the command MUST NOT overwrite it — instead it MUST inform the user and propose `cpt update` if a newer version is available. The dialog MUST ask: (1) installation directory (default: `.cypilot`), (2) which agents to support (default: all available — windsurf, cursor, claude, copilot, openai), (3) for each kit being installed, the kit config output directory (default: `{cypilot_path}/config/kits/<slug>/`). All available kits MUST be enabled by default. The command MUST create the full directory structure including skills (copied from the cache), kits, workflows, prompts, schemas, and agent-specific entry points. The command MUST define a **root system** — deriving the project name and slug from the project directory name. The command MUST create `{cypilot_path}/config/core.toml` (containing project root, root system definition, kit registrations with config paths) and `{cypilot_path}/config/artifacts.toml` with a fully populated root system entry including default SDLC autodetect rules for standard artifact kinds (`PRD.md`, `DESIGN.md`, `ADR/*.md`, `DECOMPOSITION.md`, `features/*.md`), default codebase entries, and ignore patterns. Installed kits MUST copy blueprints to `{cypilot_path}/kits/<slug>/blueprints/` (user-editable) and generate all outputs into the kit's config directory (default: `{cypilot_path}/config/kits/<slug>/`). The command MUST inject a managed `<!-- @cpt:root-agents -->` block at the beginning of the project root `AGENTS.md` (creating the file if absent) containing `ALWAYS open @/{install_dir}/config/AGENTS.md FIRST`. The command MUST create `{cypilot_path}/config/AGENTS.md` with default WHEN rules for standard system prompts. Every subsequent CLI invocation MUST verify the root AGENTS.md block exists and is correct, silently re-injecting it if missing or stale. After completion, the command MUST display a prompt suggestion: `cypilot on` or `cypilot help`.
 
@@ -209,7 +209,7 @@ The system MUST provide an interactive `cpt init` command that bootstraps Cypilo
 
 #### Config Directory
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-config`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-config`
 
 The system MUST maintain two primary directories inside the Cypilot install directory: `config/` for core configuration and generated kit outputs, and `kits/` for user-editable blueprints. All TOML config files MUST be edited exclusively by the tool — never by humans directly. All TOML config files MUST use deterministic serialization (sorted keys, consistent formatting). Generated outputs (Markdown resources) in `config/kits/` are user-editable and subject to interactive diff on regeneration. The directory structure MUST be:
 
@@ -227,7 +227,7 @@ Cypilot core's domain is: artifact awareness (knows artifacts exist, how to loca
 
 #### Deterministic Skill Engine
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-skill-engine`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-skill-engine`
 
 The system MUST provide a Python-based deterministic skill engine as the core command executor. All commands MUST output JSON. All validation, scanning, and transformation logic MUST be deterministic (same input → same output). Exit codes MUST follow the convention: 0=PASS, 1=filesystem error, 2=FAIL. The skill MUST be self-contained and importable from the project's install directory. The skill MUST provide SKILL.md as the agent entry point with execution protocol, workflow routing, and command reference.
 
@@ -236,7 +236,7 @@ The system MUST provide a Python-based deterministic skill engine as the core co
 
 #### Generic Workflows
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-workflows`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-workflows`
 
 The system MUST provide exactly two universal workflows: generate (write: create, edit, fix, update, implement) and analyze (read: validate, review, check, inspect, audit). Both workflows MUST execute a common execution protocol before their specific logic. Workflows MUST be Markdown files with frontmatter metadata, structured phases, and validation criteria. Workflows MUST support execution logging with context and message format for agent transparency. Workflows MUST NOT hardcode repository paths — all paths MUST be resolved from the config and adapter.
 
@@ -245,7 +245,7 @@ The system MUST provide exactly two universal workflows: generate (write: create
 
 #### Multi-Agent Integration
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-agents`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-agents`
 
 The system MUST provide a unified `agents` command that generates agent-specific entry points for all supported AI coding assistants. Supported agents MUST include Windsurf, Cursor, Claude, Copilot, and OpenAI. The command MUST generate workflow entry points in each agent's native format (`.windsurf/workflows/`, `.cursor/rules/`, `.claude/commands/`, `.github/prompts/`) and skill entry points that reference the core SKILL.md. Agent selection MUST NOT be persisted in the config. The command MUST accept an optional `--agent` argument to regenerate entry points for a specific agent; without `--agent`, the command MUST regenerate entry points for all supported agents. The command always fully overwrites agent entry points on each invocation.
 
@@ -254,7 +254,7 @@ The system MUST provide a unified `agents` command that generates agent-specific
 
 #### Extensible Kit System
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-kits`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-kits`
 
 The system MUST support extensible kit packages. Each kit is a blueprint package with the following minimum required structure:
 
@@ -278,7 +278,7 @@ Kit installation MUST register the kit in `{cypilot_path}/config/core.toml` (inc
 
 #### Artifact Blueprint
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-blueprint`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-blueprint`
 
 The system MUST provide an **Artifact Blueprint** — a core contract defining a single-source-of-truth file per artifact kind from which all kit resources are generated. The blueprint MUST serve as both the artifact template and the specification for that artifact kind. The core MUST define the blueprint format, provide a blueprint processor, and enforce the contract across all kits.
 
@@ -297,7 +297,7 @@ The blueprint MUST support optional **workflow registrations** — structured de
 
 #### Generated Resource Editing & Interactive Diff
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-core-resource-diff`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-core-resource-diff`
 
 All generated kit resources (template.md, rules.md, checklist.md, example.md, constraints.toml, workflows, SKILL.md, codebase outputs) in the kit’s config directory MUST be user-editable. Users MAY freely modify any generated resource at any time. On regeneration (`cpt generate-resources` or as part of `cpt update`), the system MUST compare the newly generated content against the existing file. **IF** the content is identical → no action needed. **IF** the content differs → the system MUST present an interactive diff to the user with the following resolution modes:
 
@@ -446,7 +446,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot skill (`c
 
 #### Artifact Pipeline
 
-- [ ] `p1` - **ID**: `cpt-cypilot-fr-sdlc-pipeline`
+- [x] `p1` - **ID**: `cpt-cypilot-fr-sdlc-pipeline`
 
 The SDLC kit MUST provide an artifact-first development pipeline: PRD → DESIGN → ADR → DECOMPOSITION → FEATURE → CODE. Each artifact kind MUST have a template, checklist, rules, and at least one example. Each artifact kind MUST be usable independently (no forced sequence). The kit MUST support both greenfield (design-first) and brownfield (code-first) projects.
 
@@ -455,7 +455,7 @@ The SDLC kit MUST provide an artifact-first development pipeline: PRD → DESIGN
 
 #### SDLC Kit
 
-- [ ] `p2` - **ID**: `cpt-cypilot-fr-sdlc-plugin`
+- [x] `p2` - **ID**: `cpt-cypilot-fr-sdlc-plugin`
 
 The SDLC kit MUST provide a blueprint package with artifact definitions for PRD, DESIGN, ADR, DECOMPOSITION, and FEATURE in `kits/sdlc/blueprints/`. The Blueprint Processor generates all outputs from these blueprints using the core Artifact Blueprint contract (`cpt-cypilot-fr-core-blueprint`). The SDLC kit MUST:
 

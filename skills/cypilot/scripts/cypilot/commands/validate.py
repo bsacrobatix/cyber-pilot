@@ -11,6 +11,8 @@ from ..utils.fixing import enrich_issues
 from ..utils.ui import ui
 
 # @cpt-flow:cpt-cypilot-flow-traceability-validation-validate:p1
+# @cpt-dod:cpt-cypilot-dod-traceability-validation-cross-refs:p1
+# @cpt-dod:cpt-cypilot-dod-traceability-validation-cdsl:p1
 def cmd_validate(argv: List[str]) -> int:
     """Validate Cypilot artifacts and code traceability.
 
