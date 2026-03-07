@@ -179,15 +179,8 @@ def cmd_update(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-detect-layout
     # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-detect-layout-algo
 
-    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-migrate-config-algo
-    # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-migrate-config
-    # (config migration handled implicitly by update_kit during step 2)
-    # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-migrate-config
-    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-migrate-config-algo
-
-    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-update-kits-algo
-    # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-kits
-    # ── Step 2: Update kits ──────────────────────────────────────────────
+    # Kit updates from cache (will add bundled-kit-ref migration per ADR-0013)
+    # ── Step 2: Update kits ──────────────────────────────────────────────────────
     ui.step("Updating kits...")
     from .kit import update_kit, regenerate_gen_aggregates
 
@@ -255,8 +248,7 @@ def cmd_update(argv: List[str]) -> int:
     if not args.dry_run:
         gen_result = regenerate_gen_aggregates(cypilot_dir)
         actions.update(gen_result)
-    # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-update-kits
-    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-update-kits-algo
+    # (end kit updates)
 
     # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-scaffold-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-ensure-scaffold

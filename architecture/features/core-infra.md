@@ -139,9 +139,10 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 5. [x] - `p2` - Copy skill bundle from `~/.cypilot/cache/` into install directory - `inst-copy-skill`
 6. [x] - `p1` - Algorithm: define root system using `cpt-cypilot-algo-core-infra-define-root-system` - `inst-define-root`
 7. [x] - `p1` - Algorithm: create config directory using `cpt-cypilot-algo-core-infra-create-config` - `inst-create-config`
-8. [x] - `p1` - Prompt user for per-kit config output directory (default: `{cypilot_path}/config/kits/<slug>/`) - `inst-prompt-kit-config`
-9. [x] - `p2` - Delegate kit installation to Kit Manager (Feature 2 boundary) - `inst-delegate-kits`
-10. [x] - `p2` - Delegate agent entry point generation to Agent Generator (Feature 5 boundary) - `inst-delegate-agents`
+8. [x] - `p2` - Delegate agent entry point generation to Agent Generator (Feature 5 boundary) - `inst-delegate-agents`
+9. [ ] - `p1` - Prompt user: `Install SDLC kit? [a]ccept [d]ecline` - `inst-prompt-kit`
+10. [ ] - `p1` - **IF** user accepts: delegate kit installation from GitHub to Kit Manager (Feature 2 boundary) - `inst-install-kit-accepted`
+11. [ ] - `p1` - **ELSE**: skip kit installation, display install command for later use - `inst-skip-kit-declined`
 11. [x] - `p1` - Algorithm: inject root AGENTS.md using `cpt-cypilot-algo-core-infra-inject-root-agents` - `inst-inject-agents`
 12. [x] - `p1` - Algorithm: create config/AGENTS.md using `cpt-cypilot-algo-core-infra-create-config-agents` - `inst-create-config-agents`
 13. [x] - `p1` - **RETURN** JSON: `{status, install_dir, kits_installed, agents_configured, systems}` (exit 0) - `inst-return-init-ok`
@@ -456,7 +457,7 @@ The system **MUST** provide a cache mechanism in the CLI proxy that downloads th
 
 - [x] `p1` - **ID**: `cpt-cypilot-dod-core-infra-init-config`
 
-The system **MUST** provide a `cpt init` command that copies skill bundle from cache, defines the root system from the project directory name, creates `{cypilot_path}/kits/` directory, creates `{cypilot_path}/config/core.toml` with system and kit registrations (including per-kit config output paths), creates `{cypilot_path}/config/artifacts.toml` with default SDLC autodetect rules, injects the root `AGENTS.md` managed block, and creates `{cypilot_path}/config/AGENTS.md` with default WHEN rules.
+The system **MUST** provide a `cpt init` command that copies skill bundle from cache, defines the root system from the project directory name, creates `{cypilot_path}/kits/` directory, creates `{cypilot_path}/config/core.toml` with system definition, creates `{cypilot_path}/config/artifacts.toml` with default autodetect rules, injects the root `AGENTS.md` managed block, creates `{cypilot_path}/config/AGENTS.md` with default WHEN rules, and prompts the user to install the SDLC kit with `[a]ccept / [d]ecline`. If accepted, the kit is downloaded from GitHub and installed inline.
 
 **Implements**:
 - `cpt-cypilot-flow-core-infra-project-init`

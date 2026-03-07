@@ -533,8 +533,7 @@ def cmd_init(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-algo-core-infra-create-config:p1:inst-write-artifacts-toml
 
     # @cpt-begin:cpt-cypilot-algo-core-infra-create-config:p1:inst-mkdir-kits
-    # @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-prompt-kit-config
-    # @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-delegate-kits
+    # Kit installation from cache (will be replaced by prompt+GitHub flow per ADR-0013)
     from .kit import install_kit, regenerate_gen_aggregates
 
     kit_results: Dict[str, Any] = {}

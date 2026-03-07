@@ -88,5 +88,5 @@ Confirmed by all architecture artifacts (PRD, DESIGN, ADR, FEATURE) being author
 
 ## Traceability
 
-- **PRD**: `cpt-cypilot-fr-sdlc-validation` (template structure compliance)
+- **PRD**: `cpt-cypilot-fr-core-traceability` (template structure compliance)
 - **DESIGN**: `cpt-cypilot-constraint-markdown-contract`

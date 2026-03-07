@@ -18,7 +18,7 @@
   - [4.2 Out of Scope](#42-out-of-scope)
 - [5. Functional Requirements](#5-functional-requirements)
   - [5.1 Core](#51-core)
-  - [5.2 SDLC Kit (EXTRACTED — External Package)](#52-sdlc-kit-extracted--external-package)
+  - [5.2 SDLC Kit (EXTRACTED — External Package)](#52-sdlc-kit-extracted-external-package)
 - [6. Non-Functional Requirements](#6-non-functional-requirements)
   - [6.1 Module-Specific NFRs](#61-module-specific-nfrs)
   - [6.2 NFR Exclusions](#62-nfr-exclusions)
@@ -164,7 +164,7 @@ Domain-specific value is delivered by independently installable kits. The recomm
 - CDSL behavioral specification language
 - Version detection, update proposals (tool-only), config directory migration, and kit config relocation
 - Interactive diff for kit file updates with conflict resolution
-- Kit recommendation during project initialization (SDLC kit recommended by default)
+- Kit prompt during project initialization (SDLC kit offered with accept/decline)
 - Rich CLI for configuration management (autodetect, artifacts, ignore lists, kits, constraints)
 - Environment diagnostics
 - Pre-commit hook integration
@@ -264,14 +264,14 @@ The system MUST provide a command that generates integration files for all suppo
 The system MUST support extensible kit packages installable from GitHub repositories. Each kit is a file package containing:
 
 1. **Kit files** — per-artifact directories with rules, templates, checklists, and examples, plus kit-wide constraint definitions, version metadata, and optional directories for workflows, scripts, and codebase rules. All files are user-editable.
-2. **Installation from GitHub** — during installation, the tool MUST support installing kits from GitHub repositories (`cpt kit install --github <owner/repo>`). The tool MUST ask the user for the kit config output directory. The tool MUST copy all kit files from the downloaded source and register the kit in project configuration with the GitHub source and version.
+2. **Installation from GitHub** — the tool MUST support installing kits from GitHub repositories. The tool MUST ask the user for the kit config output directory. The tool MUST copy all kit files from the downloaded source and register the kit in project configuration with the GitHub source and version.
 3. **GitHub-based versioning** — each kit MUST be versioned via GitHub tags/releases. The kit's source (`github:<owner>/<repo>`) and version (GitHub tag) MUST be stored in `core.toml` kit section.
 4. **Update with file-level diff** — the tool MUST support two update modes: **force** (overwrites all kit files) and **interactive** (default, uses file-level diff with resolution modes — see `cpt-cypilot-fr-core-resource-diff`). Kit updates download the new version from GitHub.
 5. **SKILL extensions** — a kit MAY extend the core agent entry point with kit-specific commands and workflows.
 6. **System prompt extensions** — a kit MAY include agent configuration content that is automatically loaded when the kit's artifacts or workflows are used.
 7. **Workflow registrations** — a kit MAY include workflow files that generate agent entry points.
 8. **Kit config relocation** — the system MUST provide a command to move a kit's config directory to a new location, update project configuration, and preserve all user edits.
-9. **Kit recommendation** — during project initialization, the tool MUST recommend installing the SDLC kit (`cyberfabric/cyber-pilot-kit-sdlc`) but MUST NOT bundle any kits.
+9. **Kit prompt during init** — during project initialization, the tool MUST offer to install the recommended SDLC kit with an accept/decline prompt. If accepted, the kit is downloaded and installed inline. If declined, the user can install it later. In non-interactive mode, the prompt is skipped.
 
 **User extensibility**: users MUST be able to edit any kit file. User modifications MUST be preserved across interactive kit updates via file-level diff.
 
@@ -337,9 +337,9 @@ The system MUST provide a project update command that updates the project tool (
 1. Automatically migrate project configuration between versions, preserving all user settings.
 2. Detect the directory layout version and trigger layout migration if needed (see `cpt-cypilot-fr-core-layout-migration`).
 3. Regenerate agent integration files for compatibility.
-4. Migrate bundled kit references to GitHub sources for projects upgrading from versions < 3.0.8 (see `cpt-cypilot-adr-extract-sdlc-kit`).
+4. Migrate bundled kit references to GitHub sources for projects upgrading from versions < 3.0.8.
 
-The update command MUST NOT update kit files — kit updates are a separate operation via `cpt kit update`. Version information MUST be accessible via a version query. The system MUST support checking for available updates without applying them.
+The update command MUST NOT update kit files — kit updates are a separate operation. Version information MUST be accessible via a version query. The system MUST support checking for available updates without applying them.
 
 **Actors**:
 `cpt-cypilot-actor-user`, `cpt-cypilot-actor-cypilot-cli`
@@ -422,20 +422,9 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 
 ### 5.2 SDLC Kit (EXTRACTED — External Package)
 
-> **EXTRACTED per `cpt-cypilot-adr-extract-sdlc-kit`**: The SDLC kit has been extracted to a separate GitHub repository (`cyberfabric/cyber-pilot-kit-sdlc`). All SDLC-specific functional requirements (`cpt-cypilot-fr-sdlc-*`) are now owned by the kit's own repository. Cypilot core knows only that the SDLC kit exists and is recommended for installation.
+> **EXTRACTED**: The SDLC kit has been extracted to a separate GitHub repository (`cyberfabric/cyber-pilot-kit-sdlc`). See ADR-0013 for details. All SDLC-specific functional requirements are now owned by the kit's own repository. Cypilot core knows only that the SDLC kit exists and is offered for installation during project initialization.
 >
-> The following requirement IDs have been moved to the kit repository:
-> - ~~`cpt-cypilot-fr-sdlc-pipeline`~~ — Artifact pipeline
-> - ~~`cpt-cypilot-fr-sdlc-plugin`~~ — SDLC kit file package
-> - ~~`cpt-cypilot-fr-sdlc-validation`~~ — Artifact validation
-> - ~~`cpt-cypilot-fr-sdlc-cross-artifact`~~ — Cross-artifact validation
-> - ~~`cpt-cypilot-fr-sdlc-code-gen`~~ — Code generation from design
-> - ~~`cpt-cypilot-fr-sdlc-brownfield`~~ — Brownfield support
-> - ~~`cpt-cypilot-fr-sdlc-lifecycle`~~ — Feature lifecycle management
-> - ~~`cpt-cypilot-fr-sdlc-guides`~~ — Quickstart guides
-> - ~~`cpt-cypilot-fr-sdlc-pr-review`~~ — PR review workflow
-> - ~~`cpt-cypilot-fr-sdlc-pr-status`~~ — PR status workflow
-> - ~~`cpt-cypilot-fr-sdlc-pr-config`~~ — PR review configuration
+> All `cpt-cypilot-fr-sdlc-*` requirement IDs (pipeline, plugin, validation, cross-artifact, code-gen, brownfield, lifecycle, guides, pr-review, pr-status, pr-config) have been moved to the kit repository.
 
 ---
 
@@ -606,13 +595,13 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 3. Tool asks for install directory and which agents to support
 4. Tool sets up the project: creates configuration, generates agent integration files
 5. Tool injects navigation block into project root `AGENTS.md` so AI agents discover Cypilot automatically
-6. Tool recommends installing the SDLC kit (`cyberfabric/cyber-pilot-kit-sdlc`) and displays the installation command
+6. Tool prompts: `Install SDLC kit? [a]ccept [d]ecline` — if accepted, downloads and installs the kit inline
 7. Tool displays prompt suggestion for next steps
 
 **Alternative Flows**:
 - **Existing installation detected**: Tool displays current installation info and proposes updating if a newer version is available. Does NOT overwrite or modify the existing installation.
 
-**Postconditions**: Project is set up with configuration and agent integration; kit installation is recommended as a follow-up step
+**Postconditions**: Project is set up with configuration and agent integration; SDLC kit installed if user accepted the prompt
 
 ---
 
@@ -657,7 +646,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 5. AI Agent generates artifact content following template structure and checklist criteria
 6. AI Agent presents summary and asks for confirmation
 7. User confirms; AI Agent writes file and updates config (uses capability `cpt-cypilot-fr-core-config`)
-8. AI Agent runs deterministic validation automatically (uses capability `cpt-cypilot-fr-sdlc-validation`)
+8. AI Agent runs deterministic validation automatically (uses capability `cpt-cypilot-fr-core-traceability`)
 
 **Alternative Flows**:
 - **Kit not registered for requested kind**: AI Agent displays available artifact kinds from registered kits and asks user to choose.
@@ -679,8 +668,8 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 **Flow**:
 
 1. User or CI runs validation (via agent chat or CLI)
-2. System runs deterministic structural validation: template compliance, ID formats, placeholders (uses capability `cpt-cypilot-fr-sdlc-validation`)
-3. System runs cross-artifact validation: cross-references, checked consistency (uses capability `cpt-cypilot-fr-sdlc-cross-artifact`)
+2. System runs deterministic structural validation: template compliance, ID formats, placeholders (uses capability `cpt-cypilot-fr-core-traceability`)
+3. System runs cross-artifact validation: cross-references, checked consistency (uses capability `cpt-cypilot-fr-core-traceability`)
 4. System reports PASS/FAIL with score breakdown and actionable issues
 
 **Postconditions**: Validation report with file paths, line numbers, and remediation guidance
@@ -703,7 +692,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 
 1. User requests implementation of a feature
 2. AI Agent loads FEATURE artifact and extracts implementation scope (uses capability `cpt-cypilot-fr-core-cdsl`)
-3. AI Agent reads project config for language-specific patterns and conventions (uses capability `cpt-cypilot-fr-sdlc-code-gen`)
+3. AI Agent reads project config for language-specific patterns and conventions (SDLC kit capability)
 4. AI Agent generates code with traceability tags where enabled (uses capability `cpt-cypilot-fr-core-traceability`)
 5. User reviews and iterates on generated code
 6. AI Agent validates traceability coverage
@@ -728,8 +717,8 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 **Flow**:
 
 1. User requests PR review (e.g., "review PR 123")
-2. AI Agent fetches latest PR data: diff, metadata, comments (uses capability `cpt-cypilot-fr-sdlc-pr-review`)
-3. AI Agent selects review prompt and checklist based on PR content (uses capability `cpt-cypilot-fr-sdlc-pr-config`)
+2. AI Agent fetches latest PR data: diff, metadata, comments (SDLC kit capability)
+3. AI Agent selects review prompt and checklist based on PR content (SDLC kit capability)
 4. AI Agent analyzes changes against checklist criteria
 5. AI Agent analyzes existing reviewer comments for validity and resolution status
 6. AI Agent writes structured review report
@@ -755,7 +744,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 **Flow**:
 
 1. User requests PR status (e.g., "PR status 123")
-2. AI Agent fetches latest PR data and generates status report (uses capability `cpt-cypilot-fr-sdlc-pr-status`)
+2. AI Agent fetches latest PR data and generates status report (SDLC kit capability)
 3. AI Agent assesses severity of unreplied comments (CRITICAL/HIGH/MEDIUM/LOW)
 4. AI Agent audits resolved comments: checks code for actual fixes, detects suspicious resolutions
 5. AI Agent reorders report by severity and presents summary
@@ -802,7 +791,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 
 **Flow**:
 
-1. User installs a kit from GitHub (e.g., `cpt kit install --github cyberfabric/cyber-pilot-kit-sdlc`)
+1. User installs a kit from GitHub (e.g., cyberfabric/cyber-pilot-kit-sdlc)
 2. Tool downloads the kit from the GitHub repository at the specified or latest version
 3. Tool asks for kit config output directory
 4. Tool copies all kit files from the downloaded source into the kit's config directory
@@ -836,7 +825,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 5. Tool migrates project configuration preserving all user settings (uses capability `cpt-cypilot-fr-core-config`)
 6. Tool migrates bundled kit references to GitHub sources for projects upgrading from versions < 3.0.8 (uses capability `cpt-cypilot-fr-core-kits`)
 7. Tool regenerates agent integration files for compatibility (uses capability `cpt-cypilot-fr-core-agents`)
-8. Tool recommends running `cpt kit update` for each installed kit if newer versions are available
+8. Tool recommends updating each installed kit if newer versions are available
 
 **Alternative Flows**:
 - **Download fails**: Tool displays network error and suggests retrying.
@@ -844,7 +833,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 - **Layout restructuring fails**: Tool restores backup and notifies user with actionable guidance.
 - **Bundled kit detected**: Tool automatically migrates kit reference to GitHub source (versions < 3.0.8).
 
-**Postconditions**: Project tool updated to latest version; layout migrated if needed; bundled kit references migrated to GitHub sources; agent integration refreshed. Kit file updates are a separate operation via `cpt kit update`
+**Postconditions**: Project tool updated to latest version; layout migrated if needed; bundled kit references migrated to GitHub sources; agent integration refreshed. Kit file updates are a separate operation
 
 ---
 
@@ -860,7 +849,7 @@ The plugin MUST delegate all validation logic to the installed Cypilot CLI to en
 **Flow**:
 
 1. User runs project initialization in existing project (uses capability `cpt-cypilot-fr-core-init`)
-2. Tool detects existing code (brownfield) and offers reverse-engineering scan (uses capability `cpt-cypilot-fr-sdlc-brownfield`)
+2. Tool detects existing code (brownfield) and offers reverse-engineering scan (SDLC kit capability)
 3. AI Agent analyzes code structure, configs, and documentation
 4. AI Agent proposes project config (tech stack, conventions, domain model)
 5. User reviews and approves proposed specs

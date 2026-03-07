@@ -80,6 +80,6 @@ Confirmed by successful PR review and status workflows using `gh pr view --json`
 
 ## Traceability
 
-- **PRD**: `cpt-cypilot-fr-sdlc-pr-review`, `cpt-cypilot-fr-sdlc-pr-status`
-- **DESIGN**: `cpt-cypilot-component-sdlc-plugin`
+- **PRD**: PR review and PR status capabilities (SDLC kit)
+- **DESIGN**: `cpt-cypilot-component-kit-manager` (kits provide PR workflows)
 - **Depends on**: `cpt-cypilot-adr-python-stdlib-only` (no pip dependencies constraint)

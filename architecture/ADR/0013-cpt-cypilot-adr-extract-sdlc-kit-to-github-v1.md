@@ -21,6 +21,10 @@ decision-makers: project maintainer
   - [Option 2: Extract Kit to GitHub Repo with GitHub Releases Versioning](#option-2-extract-kit-to-github-repo-with-github-releases-versioning)
   - [Option 3: Extract Kit to Separate Package Registry](#option-3-extract-kit-to-separate-package-registry)
 - [More Information](#more-information)
+  - [Changes to Cypilot Core](#changes-to-cypilot-core)
+  - [Migration Plan (versions < 3.0.8 → GitHub v1.0.0)](#migration-plan-versions-308-github-v100)
+  - [`core.toml` Kit Section (new format)](#coretoml-kit-section-new-format)
+  - [`cpt init` Kit Prompt](#cpt-init-kit-prompt)
 - [Traceability](#traceability)
 
 <!-- /toc -->
@@ -59,7 +63,7 @@ Chosen option: **Option 2 — Extract Kit to GitHub Repo with GitHub Releases Ve
 * Good, because `cpt update` simplifies to tool-only updates — no kit file-level diff logic in the update pipeline
 * Good, because the SDLC kit proves the third-party kit installation model — if the primary kit installs from GitHub, any kit can
 * Good, because `core.toml` kit section gains `source` and `version` fields, providing a clear audit trail of where each kit came from
-* Bad, because users must run a separate command to install the kit after initializing a project (mitigated by `cpt init` recommending the SDLC kit)
+* Neutral, because `cpt init` prompts the user to install the SDLC kit inline (`[a]ccept / [d]ecline`) — no separate command needed unless the user declines
 * Bad, because kit installation now requires network access to GitHub (mitigated by supporting `--source <local-path>` for offline installation)
 * Neutral, because the migration from bundled versions (< 3.0.8) to GitHub version v1.0.0 is a one-time operation handled automatically during `cpt update`
 
@@ -72,7 +76,7 @@ Confirmed when:
 - `cpt kit install --github cyberfabric/cyber-pilot-kit-sdlc` installs the kit from GitHub
 - `core.toml` kit section stores `source = "github:cyberfabric/cyber-pilot-kit-sdlc"` and `version = "v1.0.0"`
 - `cpt update` no longer touches kit files — only updates the tool skill
-- `cpt init` recommends installing the SDLC kit but does not bundle it
+- `cpt init` prompts to install the SDLC kit inline (`[a]ccept / [d]ecline`); if accepted, downloads and installs immediately
 - Migration from versions < 3.0.8 automatically converts the bundled kit to GitHub source v1.0.0
 - All SDLC-specific requirements, components, and features are removed from Cypilot's PRD, DESIGN, and DECOMPOSITION
 - All architecture documents (PRD, DESIGN, DECOMPOSITION, feature specs) are updated to reflect the new model
@@ -90,6 +94,8 @@ Retain the kit inside the Cypilot repository. Kit files ship as part of the tool
 * Bad, because the bundling model contradicts the extensible kit architecture — the primary kit is privileged over third-party kits
 * Bad, because Cypilot's PRD, DESIGN, and DECOMPOSITION must document SDLC-specific requirements alongside core requirements
 
+> Note: Option 2 achieves the same zero-setup experience by prompting during `cpt init` with `[a]ccept / [d]ecline`, so the convenience advantage of Option 1 is negligible.
+
 ### Option 2: Extract Kit to GitHub Repo with GitHub Releases Versioning
 
 Move the kit to `cyberfabric/cyber-pilot-kit-sdlc`. Install via `cpt kit install`. Version via GitHub tags.
@@ -98,7 +104,7 @@ Move the kit to `cyberfabric/cyber-pilot-kit-sdlc`. Install via `cpt kit install
 * Good, because GitHub releases provide versioning, changelogs, and download URLs natively
 * Good, because `cpt update` simplifies to tool-only scope
 * Good, because the ecosystem model is proven by the first kit
-* Bad, because extra step during project setup (install kit after init)
+* Good, because `cpt init` prompts to install the kit inline — no extra step
 * Bad, because requires network access to GitHub for kit installation
 
 ### Option 3: Extract Kit to Separate Package Registry
@@ -120,10 +126,10 @@ Publish the kit as a package on PyPI or npm.
 | `kits/sdlc/` | Bundled in repo | Removed — lives in `cyberfabric/cyber-pilot-kit-sdlc` |
 | `core.toml` kit section | `format`, `path`, `version` | Adds `source` field (e.g., `"github:cyberfabric/cyber-pilot-kit-sdlc"`) |
 | `cpt update` | Updates tool + kits | Updates tool only; recommends kit updates if available |
-| `cpt init` | Installs bundled kits | Recommends SDLC kit installation; no bundled kits |
+| `cpt init` | Installs bundled kits | Prompts `Install SDLC kit? [a]ccept [d]ecline`; downloads from GitHub if accepted |
 | `cpt kit install` | From local/cache source only | Supports `--github <owner/repo>` for GitHub sources |
 | PRD Section 5.2 | SDLC Kit requirements | Removed — SDLC requirements live in kit repo |
-| DESIGN SDLC component | `cpt-cypilot-component-sdlc-plugin` | Removed from component model |
+| DESIGN SDLC component | SDLC plugin component | Removed from component model |
 | DECOMPOSITION Features 4, 6, 9 | SDLC-specific features | Removed or reduced to core-only scope |
 
 ### Migration Plan (versions < 3.0.8 → GitHub v1.0.0)
@@ -145,6 +151,18 @@ path = "config/kits/sdlc"
 version = "v1.0.0"
 ```
 
+### `cpt init` Kit Prompt
+
+During `cpt init`, after creating core configs, the tool prompts:
+
+```
+Install recommended SDLC kit (cyberfabric/cyber-pilot-kit-sdlc)? [a]ccept [d]ecline: 
+```
+
+- **`[a]ccept`**: downloads the kit from GitHub, installs it into `config/kits/sdlc/`, registers in `core.toml`
+- **`[d]ecline`**: skips kit installation; user can install later via `cpt kit install --github cyberfabric/cyber-pilot-kit-sdlc`
+- **Non-interactive mode** (`--no-prompt`): skips the prompt (no kit installed)
+
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)
@@ -154,7 +172,7 @@ This decision directly addresses the following requirements and design elements:
 
 * `cpt-cypilot-fr-core-kits` — Kit installation now supports GitHub as a source; kits are no longer bundled with the tool
 * `cpt-cypilot-fr-core-version` — `update` command scope reduced to tool-only; kit updates are a separate operation
-* `cpt-cypilot-fr-core-init` — Project initialization recommends the SDLC kit but does not bundle it
+* `cpt-cypilot-fr-core-init` — Project initialization prompts to install the SDLC kit inline with `[a]ccept / [d]ecline`
 * `cpt-cypilot-component-kit-manager` — Updated to support GitHub-based kit sources with `source` and `version` tracking in `core.toml`
-* `cpt-cypilot-component-sdlc-plugin` — Removed from Cypilot component model; SDLC kit is an external package
+* SDLC plugin component — Removed from Cypilot component model; SDLC kit is an external package
 * `cpt-cypilot-principle-kit-centric` — Reinforced: even the primary kit is an external package, proving the extensible kit model
