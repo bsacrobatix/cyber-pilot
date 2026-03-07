@@ -1,3 +1,4 @@
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-structure-datamodel
 from __future__ import annotations
 
 import re
@@ -79,6 +80,7 @@ def error(kind: str, message: str, *, path: Path | str, line: int = 1, code: Opt
     extra = {k: v for k, v in extra.items() if v is not None}
     out.update(extra)
     return out
+# @cpt-end:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-structure-datamodel
 
 # @cpt-algo:cpt-cypilot-algo-traceability-validation-headings-contract:p1
 def heading_constraint_ids_by_line(path: Path, heading_constraints: Sequence[HeadingConstraint]) -> List[List[str]]:
@@ -223,11 +225,13 @@ def heading_constraint_ids_by_line(path: Path, heading_constraints: Sequence[Hea
     return out
     # @cpt-end:cpt-cypilot-algo-traceability-validation-headings-contract:p1:inst-resolve-scope
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-structure-datamodel
 @dataclass(frozen=True)
 class ParsedCypilotId:
     system: str
     kind: str
     slug: str
+# @cpt-end:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-structure-datamodel
 
 def parse_cpt(
     cpt: str,
@@ -291,11 +295,13 @@ def parse_cpt(
     return ParsedCypilotId(system=system, kind=expected_kind, slug=slug)
     # @cpt-end:cpt-cypilot-algo-traceability-validation-scan-ids:p1:inst-parse-cpt
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-structure-datamodel
 @dataclass(frozen=True)
 class ArtifactRecord:
     path: Path
     artifact_kind: str
     constraints: Optional[ArtifactKindConstraints] = None
+# @cpt-end:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-structure-datamodel
 
 # @cpt-algo:cpt-cypilot-algo-traceability-validation-validate-structure:p1
 def validate_artifact_file(
@@ -803,6 +809,7 @@ def validate_artifact_file(
     # @cpt-end:cpt-cypilot-algo-traceability-validation-validate-structure:p1:inst-return-structure
 
 # @cpt-algo:cpt-cypilot-algo-traceability-validation-cross-validate:p1
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-cross-validate:p1:inst-cross-datamodel
 def cross_validate_artifacts(
     artifacts: Sequence[ArtifactRecord],
     registered_systems: Optional[Iterable[str]] = None,
@@ -965,6 +972,7 @@ def cross_validate_artifacts(
                 continue
             out.append({"id": hs, "description": km.get(hs)})
         return out
+    # @cpt-end:cpt-cypilot-algo-traceability-validation-cross-validate:p1:inst-cross-datamodel
 
     # @cpt-begin:cpt-cypilot-algo-traceability-validation-cross-validate:p1:inst-build-index
     # Index scan results
@@ -1393,6 +1401,7 @@ def cross_validate_artifacts(
     return {"errors": errors, "warnings": warnings}
     # @cpt-end:cpt-cypilot-algo-traceability-validation-cross-validate:p1:inst-return-cross
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-load-constraints:p1:inst-constraints-helpers
 def _parse_examples(v: object) -> Tuple[Optional[List[object]], Optional[str]]:
     if v is None:
         return None, None
@@ -1522,6 +1531,7 @@ def _parse_references(v: object) -> Tuple[Optional[Dict[str, ReferenceRule]], Op
         if rule is not None:
             out[k.strip().upper()] = rule
     return out, None
+# @cpt-end:cpt-cypilot-algo-traceability-validation-load-constraints:p1:inst-constraints-helpers
 
 def _parse_id_constraint(obj: object) -> Tuple[Optional[IdConstraint], Optional[str]]:
     # @cpt-begin:cpt-cypilot-algo-traceability-validation-load-constraints:p1:inst-parse-id-constraint
@@ -1779,6 +1789,7 @@ def load_constraints_toml(kit_root: Path) -> Tuple[Optional[KitConstraints], Lis
     return constraints, []
     # @cpt-end:cpt-cypilot-algo-traceability-validation-load-constraints:p1:inst-load-toml
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-headings-contract:p1:inst-headings-datamodel
 __all__ = [
     "ReferenceRule",
     "HeadingConstraint",
@@ -1797,6 +1808,7 @@ __all__ = [
 
 _HEADING_LINE_RE = re.compile(r"^\s*(#{1,6})\s+(.+?)\s*$")
 _HEADING_NUMBER_PREFIX_RE = re.compile(r"^(?P<prefix>\d+(?:\.\d+)*)(?:\.)?\s+(?P<title>.+)$")
+# @cpt-end:cpt-cypilot-algo-traceability-validation-headings-contract:p1:inst-headings-datamodel
 
 def _scan_headings(path: Path) -> List[Dict[str, object]]:
     # @cpt-begin:cpt-cypilot-algo-traceability-validation-headings-contract:p1:inst-scan-headings

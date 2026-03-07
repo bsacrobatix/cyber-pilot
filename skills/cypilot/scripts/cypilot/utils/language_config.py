@@ -8,6 +8,7 @@ Supports dynamic file extensions and comment patterns for any language.
 @cpt-dod:cpt-cypilot-dod-traceability-validation-code:p1
 """
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -22,6 +23,7 @@ DEFAULT_MULTI_LINE_COMMENTS = [
     {"start": "<!--", "end": "-->"},
 ]
 DEFAULT_BLOCK_COMMENT_PREFIXES = ["*"]
+# @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 
 # @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-define-defaults
 # Extension-based comment format defaults.
@@ -78,6 +80,7 @@ EXTENSION_COMMENT_DEFAULTS: Dict[str, Tuple[List[str], List[Dict[str, str]], Lis
 }
 # @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-define-defaults
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 class LanguageConfig:
     """Language configuration for code scanning."""
     
@@ -113,6 +116,7 @@ class LanguageConfig:
             patterns.append(re.escape(prefix))
         
         return "(?:" + "|".join(patterns) + ")"
+# @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 
 # @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-load-config
 def load_language_config(start_path: Optional[Path] = None) -> LanguageConfig:
@@ -171,6 +175,7 @@ def load_language_config(start_path: Optional[Path] = None) -> LanguageConfig:
     )
 # @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-load-config
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 def _default_language_config() -> LanguageConfig:
     """Return default language configuration."""
     return LanguageConfig(
@@ -205,6 +210,7 @@ def comment_defaults_for_extensions(extensions: List[str]) -> Tuple[List[str], L
                 seen_mlc.add(key)
                 merged_mlc.append(m)
     return merged_slc, merged_mlc
+# @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 
 # @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-build-regex
 def build_cypilot_begin_regex(lang_config: LanguageConfig) -> re.Pattern:
@@ -228,6 +234,7 @@ def build_no_cypilot_end_regex(lang_config: LanguageConfig) -> re.Pattern:
     return re.compile(rf"^\s*{comment_pattern}.*!no-cpt-end")
 # @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-build-regex
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel
 __all__ = [
     "LanguageConfig",
     "load_language_config",
@@ -240,3 +247,4 @@ __all__ = [
     "EXTENSION_COMMENT_DEFAULTS",
     "comment_defaults_for_extensions",
 ]
+# @cpt-end:cpt-cypilot-algo-traceability-validation-language-config:p1:inst-lang-datamodel

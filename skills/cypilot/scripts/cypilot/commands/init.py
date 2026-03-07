@@ -1,3 +1,4 @@
+# @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-helpers
 import argparse
 import json
 import os
@@ -163,6 +164,7 @@ def _resolve_user_path(raw: str, base: Path) -> Path:
 def _slug_to_pascal_case(slug: str) -> str:
     """Convert a slug like 'my-app' to PascalCase like 'MyApp'."""
     return "".join(word.capitalize() for word in slug.split("-")) if slug else "Unnamed"
+# @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-helpers
 
 def _define_root_system(project_root: Path) -> Dict[str, str]:
     """
@@ -190,6 +192,7 @@ _TOML_FENCE_RE = re.compile(r"```toml\s*\n(.*?)```", re.DOTALL)
 MARKER_START = "<!-- @cpt:root-agents -->"
 MARKER_END = "<!-- /@cpt:root-agents -->"
 
+# @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-detect-existing
 def _read_existing_install(project_root: Path) -> Optional[str]:
     """
     Check if project already has Cypilot installed by reading AGENTS.md TOML block.
@@ -217,6 +220,7 @@ def _read_existing_install(project_root: Path) -> Optional[str]:
         except Exception:
             continue
     return None
+# @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-detect-existing
 
 def _compute_managed_block(install_dir: str) -> str:
     # @cpt-begin:cpt-cypilot-algo-core-infra-inject-root-agents:p1:inst-compute-block
@@ -288,6 +292,7 @@ def _inject_root_agents(project_root: Path, install_dir: str, dry_run: bool = Fa
     """Inject or update root AGENTS.md managed block. Returns action taken."""
     return _inject_managed_block(project_root / "AGENTS.md", install_dir, dry_run)
 
+# @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-inject-claude
 def _compute_claude_block() -> str:
     return (
         f"{MARKER_START}\n"
@@ -320,6 +325,7 @@ def _inject_root_claude(project_root: Path, install_dir: str, dry_run: bool = Fa
     if not dry_run:
         claude_file.write_text(new_content, encoding="utf-8")
     return "updated"
+# @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-inject-claude
 
 def cmd_init(argv: List[str]) -> int:
     # @cpt-dod:cpt-cypilot-dod-core-infra-init-config:p1
@@ -624,7 +630,7 @@ def cmd_init(argv: List[str]) -> int:
 # ---------------------------------------------------------------------------
 # Human-friendly formatters
 # ---------------------------------------------------------------------------
-
+# @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-format-output
 def _human_init_ok(
     data: Dict[str, object],
     project_root: Path,
@@ -678,3 +684,4 @@ def _human_init_error(data: Dict[str, object]) -> None:
         else:
             ui.substep(f"• {err}")
     ui.blank()
+# @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-format-output

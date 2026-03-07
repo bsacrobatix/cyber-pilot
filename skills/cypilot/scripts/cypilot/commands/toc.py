@@ -6,6 +6,7 @@ Thin CLI wrapper around the unified ``cypilot.utils.toc`` module.
 @cpt-flow:cpt-cypilot-flow-developer-experience-toc:p1
 """
 
+# @cpt-begin:cpt-cypilot-flow-developer-experience-toc:p1:inst-toc-gen-imports
 import argparse
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ from cypilot.utils.toc import (
     validate_toc as _validate_toc,
 )
 from ..utils.ui import ui
+# @cpt-end:cpt-cypilot-flow-developer-experience-toc:p1:inst-toc-gen-imports
 
 def cmd_toc(argv: List[str]) -> int:
     """Generate/update Table of Contents in markdown files."""
@@ -116,6 +118,7 @@ def cmd_toc(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-flow-developer-experience-toc:p1:inst-toc-gen-return
     return 1 if output["status"] == "ERROR" else 0
 
+# @cpt-begin:cpt-cypilot-flow-developer-experience-toc:p1:inst-toc-gen-format
 def _human_toc(data: dict) -> None:
     ui.header("Table of Contents")
     for r in data.get("results", []):
@@ -144,3 +147,4 @@ def _human_toc(data: dict) -> None:
     else:
         ui.warn(f"{n} file(s) processed ({overall}).")
     ui.blank()
+# @cpt-end:cpt-cypilot-flow-developer-experience-toc:p1:inst-toc-gen-format

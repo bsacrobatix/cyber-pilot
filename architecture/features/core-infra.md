@@ -108,6 +108,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
    2. [x] - `p1` - **RETURN** JSON: `{status, message, version}` (exit 0 on success, 1 on failure) - `inst-return-cache-update`
 9. [x] - `p1` - **RETURN** exit code from skill engine (0=PASS, 1=error, 2=FAIL) - `inst-return-exit`
 
+**Supporting**:
+- [x] - `p1` - Imports, param extraction helpers (`_extract_version_param`, `_extract_named_param`), version display, init cache logic, forward-to-skill subprocess wrapper, background version check function - `inst-cli-proxy-helpers`
+
 ### Project Initialization
 
 - [x] `p1` - **ID**: `cpt-cypilot-flow-core-infra-project-init`
@@ -142,6 +145,10 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 11. [x] - `p1` - Algorithm: inject root AGENTS.md using `cpt-cypilot-algo-core-infra-inject-root-agents` - `inst-inject-agents`
 12. [x] - `p1` - Algorithm: create config/AGENTS.md using `cpt-cypilot-algo-core-infra-create-config-agents` - `inst-create-config-agents`
 13. [x] - `p1` - **RETURN** JSON: `{status, install_dir, kits_installed, agents_configured, systems}` (exit 0) - `inst-return-init-ok`
+14. [x] - `p1` - Helper functions: copy from cache, generate READMEs for .core/.gen/config dirs, default core.toml, path prompting, slug-to-PascalCase - `inst-init-helpers`
+15. [x] - `p1` - Detect existing Cypilot installation by reading AGENTS.md TOML block with `cypilot_path` variable - `inst-init-detect-existing`
+16. [x] - `p1` - Inject/update CLAUDE.md managed block for Claude agent integration - `inst-init-inject-claude`
+17. [x] - `p1` - Human-friendly formatters for init success and error output - `inst-init-format-output`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -162,6 +169,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
    1. [x] - `p1` - **RETURN** path to cached skill engine - `inst-return-cache-path`
 5. [x] - `p1` - **ELSE** **RETURN** error: no skill found - `inst-return-not-found`
 
+**Supporting**:
+- [x] - `p1` - Imports, constants (marker, regex patterns), project root finder, TOML markdown parser, cypilot path reader, install dir finder, cache dir/version file getters, cached/project version readers - `inst-resolve-helpers`
+
 ### Route Command
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-core-infra-route-command`
@@ -180,6 +190,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 6. [x] - `p1` - Execute handler with parsed arguments - `inst-execute-handler`
 7. [x] - `p1` - Serialize handler result to JSON on stdout - `inst-serialize-json`
 8. [x] - `p1` - **RETURN** exit code from handler (0=PASS, 1=error, 2=FAIL) - `inst-return-code`
+
+**Supporting**:
+- [x] - `p1` - Imports, command wrapper functions, context loading, help text, command descriptions, section layout, `__main__` block - `inst-route-helpers`
 
 ### Define Root System
 
@@ -250,6 +263,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 7. [x] - `p1` - Write version marker file `~/.cypilot/cache/.version` with downloaded version - `inst-write-version`
 8. [x] - `p1` - **RETURN** path to cached skill bundle - `inst-return-cache-path-new`
 
+**Supporting**:
+- [x] - `p1` - Imports, constants (GitHub owner/repo, API base, user agent), API URL resolver, latest version resolver, local copy function, archive extraction helpers (tar prefix, tar extract, zip prefix, zip extract) - `inst-cache-helpers`
+
 ### Create Config AGENTS.md
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-core-infra-create-config-agents`
@@ -298,6 +314,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 4. [x] - `p1` - **IF** found `.git` **RETURN** that directory as project root - `inst-root-found-git`
 5. [x] - `p1` - **ELSE RETURN** None - `inst-root-not-found`
 
+**Supporting**:
+- [x] - `p1` - Imports, constants, and path helper functions (core_subpath, config_subpath, cfg_get_str) - `inst-root-datamodel`
+
 ### Config Management
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-core-infra-config-management`
@@ -310,6 +329,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 4. [x] - `p1` - Load cypilot config from AGENTS.md and rules directory - `inst-cfg-load-config`
 5. [x] - `p1` - Load artifacts registry from `artifacts.toml` (with fallback chain) - `inst-cfg-load-registry`
 
+**Supporting**:
+- [x] - `p1` - Helper functions: cypilot root detection from config, registry entry iteration, directory type detection, text file loader - `inst-cfg-helpers`
+
 ### TOML Utilities
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-core-infra-toml-utils`
@@ -319,6 +341,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 1. [x] - `p1` - Parse TOML string or file using stdlib `tomllib` - `inst-toml-parse`
 2. [x] - `p1` - Extract and merge TOML fenced code blocks from markdown text - `inst-toml-from-markdown`
 3. [x] - `p1` - Serialize nested dict to TOML format (tables, arrays of tables, scalars) - `inst-toml-serialize`
+
+**Supporting**:
+- [x] - `p1` - Imports, type alias, regex constants, and deep merge helper - `inst-toml-datamodel`
 
 ### Registry Parsing
 
@@ -331,6 +356,9 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 3. [x] - `p1` - Build ArtifactsMeta from parsed dict: parse kits, systems hierarchy, ignore rules - `inst-reg-build-meta`
 4. [x] - `p1` - Expand autodetect rules into concrete artifact/codebase entries via glob matching - `inst-reg-expand-autodetect`
 5. [x] - `p1` - **RETURN** ArtifactsMeta with indexed artifacts and system tree - `inst-reg-return`
+6. [x] - `p1` - Define registry data model: Kit, Artifact, CodebaseEntry, IgnoreBlock, AutodetectRule, SystemNode dataclasses with from_dict parsing and slug validation - `inst-reg-dataclasses`
+7. [x] - `p1` - Query and iteration methods: get artifact by path, iterate all artifacts/codebase/systems, collect system prefixes, validate slugs - `inst-reg-query-methods`
+8. [x] - `p1` - Utility functions: create backup, extract system slug from cpt ID, generate slug from name, generate default registry for new projects - `inst-reg-utilities`
 
 ### Context Loading
 
@@ -343,6 +371,10 @@ Enables users to install Cypilot globally, initialize it in any project with sen
 3. [x] - `p1` - Expand autodetect rules into concrete artifact/codebase entries - `inst-ctx-expand-autodetect`
 4. [x] - `p1` - Collect registered system prefixes - `inst-ctx-collect-systems`
 5. [x] - `p1` - **RETURN** CypilotContext with all loaded metadata - `inst-ctx-return`
+
+**Supporting**:
+- [x] - `p1` - Define context data model: LoadedKit, CypilotContext dataclasses, imports - `inst-ctx-datamodel`
+- [x] - `p1` - Global context management: get/set/ensure context singleton, get_known_id_kinds query - `inst-ctx-globals`
 
 ## 4. States (CDSL)
 

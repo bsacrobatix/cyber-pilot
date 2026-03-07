@@ -6,6 +6,7 @@ conf.toml readability, constraints.toml schema, and template/example
 consistency against constraints.
 """
 
+# @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-imports
 import argparse
 import json
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils.constraints import error as constraints_error
 from ..utils.ui import ui
+# @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-imports
 
 
 # @cpt-dod:cpt-cypilot-dod-kit-validate:p1
@@ -76,8 +78,10 @@ def run_validate_kits(
 
     # @cpt-begin:cpt-cypilot-algo-kit-validate:p1:inst-template-check
     # ── Phase 2: Template & example validation ────────────────────────
+    # @cpt-begin:cpt-cypilot-flow-developer-experience-self-check:p1:inst-load-registry
     self_check_report: Dict[str, object] = {}
     artifacts_meta, meta_err = load_artifacts_meta(adapter_dir)
+    # @cpt-end:cpt-cypilot-flow-developer-experience-self-check:p1:inst-load-registry
     if artifacts_meta is not None and not meta_err:
         from .self_check import run_self_check_from_meta
         _, sc_out = run_self_check_from_meta(
@@ -266,6 +270,7 @@ def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int
     return (0 if overall_status == "PASS" else 2), result
     # @cpt-end:cpt-cypilot-algo-kit-validate-by-path:p1:inst-build-result
 
+# @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-format
 def _show_error(e: object, *, prefix: str = "\u2717") -> None:
     """Display a single error/warning dict with nested details."""
     if not isinstance(e, dict):
@@ -362,3 +367,4 @@ def _human_validate_kits(data: dict) -> None:
     else:
         ui.error(f"{n} kit(s) validated, {n_err} error(s).")
     ui.blank()
+# @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-format

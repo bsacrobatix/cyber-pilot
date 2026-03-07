@@ -120,6 +120,10 @@ Enables users to install, update, and validate kit packages with interactive fil
 3. [x] - `p1` - **ELSE**: get context and run `run_validate_kits` for registered kits - `inst-registered-mode`
 4. [x] - `p1` - Output result JSON with human formatter - `inst-output-result`
 
+**Supporting**:
+- [x] - `p1` - Imports and module setup for validate-kits command - `inst-validate-kits-imports`
+- [x] - `p1` - Human-friendly formatter and error display helpers for validate-kits output - `inst-validate-kits-format`
+
 ### Kit CLI Dispatcher
 
 - [x] `p1` - **ID**: `cpt-cypilot-flow-kit-dispatch`
@@ -222,6 +226,9 @@ Enables users to install, update, and validate kit packages with interactive fil
 10. [x] - `p1` - **IF** file had TOC and was written: prompt/auto-regenerate TOC, handle errors with rollback - `inst-toc-regen`
 11. [x] - `p1` - **RETURN** result with all entries, accepted/declined paths - `inst-build-result`
 
+**Supporting**:
+- [x] - `p1` - Result list initialization and changed file aggregation helpers - `inst-update-datamodel`
+
 ### Kit File Enumeration
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-kit-file-enumerate`
@@ -235,6 +242,9 @@ Enables users to install, update, and validate kit packages with interactive fil
 2. [x] - `p1` - **IF** `content_dirs`/`content_files` provided: include-only mode (top-level dir in content_dirs or root file in content_files) - `inst-include-filter`
 3. [x] - `p1` - **ELSE**: exclude mode (skip files in `_KIT_EXCLUDE_FILES`, dirs in `_KIT_EXCLUDE_DIRS`) - `inst-exclude-filter`
 4. [x] - `p1` - Read file bytes and store in result dict - `inst-read-bytes`
+
+**Supporting**:
+- [x] - `p1` - Kit exclude/include constants and default content filters - `inst-enum-datamodel`
 
 ### Kit File Classification
 
@@ -271,6 +281,9 @@ Enables users to install, update, and validate kit packages with interactive fil
 1. [x] - `p1` - Show summary: colored counts of added (green +), removed (red -), modified (yellow ~) files - `inst-show-summary`
 2. [x] - `p1` - Show per-file unified diff: decode bytes, compute `difflib.unified_diff`, color-code output lines - `inst-show-file-diff`
 
+**Supporting**:
+- [x] - `p1` - Imports, DiffReport dataclass, and editor/conflict marker constants - `inst-diff-datamodel`
+
 ### Kit Conflict Merge
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-kit-conflict-merge`
@@ -286,6 +299,9 @@ Enables users to install, update, and validate kit packages with interactive fil
 4. [x] - `p1` - **IF** conflict markers remain: prompt retry/accept-upstream/decline - `inst-prompt-unresolved`
 5. [x] - `p1` - Loop: retry reopens editor, accept returns upstream, decline returns None - `inst-resolve-loop`
 
+**Supporting**:
+- [x] - `p1` - Editor detection helper function - `inst-merge-datamodel`
+
 ### Kit TOC Handling
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-kit-toc-handling`
@@ -299,6 +315,9 @@ Enables users to install, update, and validate kit packages with interactive fil
 2. [x] - `p1` - Prompt user about TOC regeneration (or auto-regen if auto_approve) - `inst-prompt-regen`
 3. [x] - `p1` - Regenerate TOC using `insert_toc_markers` or `insert_toc_heading` based on detected format - `inst-regenerate`
 4. [x] - `p1` - **IF** regeneration fails: restore previous content, prompt continue/stop - `inst-handle-error`
+
+**Supporting**:
+- [x] - `p1` - TOC marker constants and heading regex patterns - `inst-toc-datamodel`
 
 ### Kit Snapshot
 

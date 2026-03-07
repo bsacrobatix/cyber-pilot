@@ -135,6 +135,10 @@ Reduces friction in daily Cypilot usage. `doctor` catches environment issues bef
    2. [x] - `p1` - **IF** not dry-run and not skip-validate, validate generated TOC - `inst-toc-gen-validate`
 3. [x] - `p1` - **RETURN** JSON: `{status, files_processed, results}` - `inst-toc-gen-return`
 
+**Supporting**:
+- [x] - `p1` - Imports and module setup for toc command - `inst-toc-gen-imports`
+- [x] - `p1` - Human-friendly formatter for toc command output - `inst-toc-gen-format`
+
 ### Shell Completions
 
 - [ ] `p3` - **ID**: `cpt-cypilot-flow-developer-experience-completions`

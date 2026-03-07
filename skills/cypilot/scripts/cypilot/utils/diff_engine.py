@@ -8,6 +8,7 @@ Entry point: ``file_level_kit_update()``.
 
 """
 
+# @cpt-begin:cpt-cypilot-algo-kit-diff-display:p1:inst-diff-datamodel
 import difflib
 import os
 import re
@@ -30,6 +31,7 @@ class DiffReport:
     @property
     def has_changes(self) -> bool:
         return bool(self.added or self.removed or self.modified)
+# @cpt-end:cpt-cypilot-algo-kit-diff-display:p1:inst-diff-datamodel
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +75,7 @@ def show_file_diff(
     # @cpt-end:cpt-cypilot-algo-kit-diff-display:p1:inst-show-file-diff
 
 
+# @cpt-begin:cpt-cypilot-algo-kit-conflict-merge:p1:inst-merge-datamodel
 def _get_editor() -> str:
     """Return the user's preferred editor: $VISUAL → $EDITOR → vi."""
     return os.environ.get("VISUAL") or os.environ.get("EDITOR") or "vi"
@@ -81,6 +84,7 @@ def _get_editor() -> str:
 _CONFLICT_MARKER_OURS = "<<<<<<< installed (yours)"
 _CONFLICT_MARKER_SEP = "======="
 _CONFLICT_MARKER_THEIRS = ">>>>>>> upstream (source)"
+# @cpt-end:cpt-cypilot-algo-kit-conflict-merge:p1:inst-merge-datamodel
 
 
 # @cpt-algo:cpt-cypilot-algo-kit-conflict-merge:p1
@@ -256,15 +260,18 @@ def _open_editor_for_file(
 # Kit file-level update  (cpt-cypilot-algo-kit-file-update)
 # ---------------------------------------------------------------------------
 
+# @cpt-begin:cpt-cypilot-algo-kit-file-enumerate:p1:inst-enum-datamodel
 _KIT_EXCLUDE_FILES = frozenset({"conf.toml", "blueprint_hashes.toml"})
 _KIT_EXCLUDE_DIRS = frozenset({"blueprints", "__pycache__", ".prev"})
 
 # Default content items when no explicit filter is provided
 _DEFAULT_CONTENT_DIRS: Optional[Tuple[str, ...]] = None
 _DEFAULT_CONTENT_FILES: Optional[Tuple[str, ...]] = None
+# @cpt-end:cpt-cypilot-algo-kit-file-enumerate:p1:inst-enum-datamodel
 
 
 # @cpt-algo:cpt-cypilot-algo-kit-file-enumerate:p1
+# @cpt-algo:cpt-cypilot-algo-kit-snapshot:p1
 def _enumerate_kit_files(
     dir_path: Path,
     *,
@@ -283,6 +290,7 @@ def _enumerate_kit_files(
     legacy exclude-based filtering is applied.
     """
     # @cpt-begin:cpt-cypilot-algo-kit-file-enumerate:p1:inst-walk-dir
+    # @cpt-begin:cpt-cypilot-algo-kit-snapshot:p1:inst-read-files
     files: Dict[str, bytes] = {}
     if not dir_path.is_dir():
         return files
@@ -323,6 +331,7 @@ def _enumerate_kit_files(
             pass
         # @cpt-end:cpt-cypilot-algo-kit-file-enumerate:p1:inst-read-bytes
     return files
+    # @cpt-end:cpt-cypilot-algo-kit-snapshot:p1:inst-read-files
     # @cpt-end:cpt-cypilot-algo-kit-file-enumerate:p1:inst-walk-dir
 
 
@@ -435,10 +444,12 @@ def _show_kit_update_summary(report: DiffReport, prefix: str = "    ") -> None:
 # TOC handling for kit file diffs
 # ---------------------------------------------------------------------------
 
+# @cpt-begin:cpt-cypilot-algo-kit-toc-handling:p1:inst-toc-datamodel
 _TOC_MARKER_START = "<!-- toc -->"
 _TOC_MARKER_END = "<!-- /toc -->"
 _TOC_HEADING_RE = re.compile(r"^##\s+Table of Contents\s*$")
 _HEADING_RE_TOC = re.compile(r"^#{1,6}\s")
+# @cpt-end:cpt-cypilot-algo-kit-toc-handling:p1:inst-toc-datamodel
 
 
 # @cpt-algo:cpt-cypilot-algo-kit-toc-handling:p1
@@ -655,6 +666,7 @@ def file_level_kit_update(
     _show_kit_update_summary(report)
     # @cpt-end:cpt-cypilot-algo-kit-file-update:p1:inst-show-summary
 
+    # @cpt-begin:cpt-cypilot-algo-kit-file-update:p1:inst-update-datamodel
     result_added: List[Dict[str, str]] = []
     result_removed: List[Dict[str, str]] = []
     result_modified: List[Dict[str, str]] = []
@@ -666,6 +678,7 @@ def file_level_kit_update(
         + [(p, "removed") for p in report.removed]
         + [(p, "modified") for p in report.modified]
     )
+    # @cpt-end:cpt-cypilot-algo-kit-file-update:p1:inst-update-datamodel
 
     for rel_path, change_type in changed:
         old_content = user_stripped.get(rel_path, b"")

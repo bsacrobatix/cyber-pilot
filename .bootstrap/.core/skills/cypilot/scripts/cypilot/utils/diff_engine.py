@@ -1,15 +1,10 @@
 """
 Resource Diff Engine for Cypilot.
 
-Provides two capabilities:
-
-1. **Kit file-level update** (primary): compare a source kit directory against
-   the user's installed copy, classify files, show unified diffs, and prompt
-   per file with [a]ccept / [d]ecline / [A]ccept all / [D]ecline all / [m]odify.
-   Entry point: ``file_level_kit_update()``.
-
-2. **Legacy resource diff** (backward compat): snapshot-based diff for
-   generated resource directories.  Entry point: ``interactive_review()``.
+Compares a source kit directory against the user's installed copy,
+classifies files, shows unified diffs, and prompts per file with
+[a]ccept / [d]ecline / [A]ccept all / [D]ecline all / [m]odify.
+Entry point: ``file_level_kit_update()``.
 
 """
 
@@ -23,38 +18,6 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
-# Extensions to track in generated output directories
-_GEN_EXTENSIONS = (".md", ".toml")
-
-
-# ---------------------------------------------------------------------------
-# Snapshot & Diff
-# ---------------------------------------------------------------------------
-
-# @cpt-algo:cpt-cypilot-algo-kit-snapshot:p1
-def snapshot_directory(
-    dir_path: Path,
-    extensions: Tuple[str, ...] = _GEN_EXTENSIONS,
-) -> Dict[str, bytes]:
-    """Read all files with given extensions recursively into memory.
-
-    Returns {relative_path: file_content_bytes}.
-    """
-    # @cpt-begin:cpt-cypilot-algo-kit-snapshot:p1:inst-read-files
-    snapshot: Dict[str, bytes] = {}
-    if not dir_path.is_dir():
-        return snapshot
-    for f in sorted(dir_path.rglob("*")):
-        if f.is_file() and f.suffix in extensions:
-            rel = str(f.relative_to(dir_path))
-            try:
-                snapshot[rel] = f.read_bytes()
-            except OSError:
-                pass
-    return snapshot
-    # @cpt-end:cpt-cypilot-algo-kit-snapshot:p1:inst-read-files
-
 
 @dataclass
 class DiffReport:
@@ -302,6 +265,7 @@ _DEFAULT_CONTENT_FILES: Optional[Tuple[str, ...]] = None
 
 
 # @cpt-algo:cpt-cypilot-algo-kit-file-enumerate:p1
+# @cpt-algo:cpt-cypilot-algo-kit-snapshot:p1
 def _enumerate_kit_files(
     dir_path: Path,
     *,
@@ -320,6 +284,7 @@ def _enumerate_kit_files(
     legacy exclude-based filtering is applied.
     """
     # @cpt-begin:cpt-cypilot-algo-kit-file-enumerate:p1:inst-walk-dir
+    # @cpt-begin:cpt-cypilot-algo-kit-snapshot:p1:inst-read-files
     files: Dict[str, bytes] = {}
     if not dir_path.is_dir():
         return files

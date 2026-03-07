@@ -23,6 +23,7 @@ Pipeline:
 @cpt-dod:cpt-cypilot-dod-version-config-update:p1
 """
 
+# @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-imports
 import argparse
 import json
 import shutil
@@ -42,6 +43,7 @@ from .init import (
     _inject_root_claude,
 )
 from ..utils.ui import ui
+# @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-update-imports
 
 def cmd_update(argv: List[str]) -> int:
     """Update an existing Cypilot installation.
@@ -119,6 +121,7 @@ def cmd_update(argv: List[str]) -> int:
         return 1
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-resolve-project
 
+    # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-whatsnew
     actions: Dict[str, Any] = {}
     errors: List[Dict[str, str]] = []
     warnings: List[str] = []
@@ -139,6 +142,7 @@ def cmd_update(argv: List[str]) -> int:
             if not ack:
                 ui.result({"status": "ABORTED", "message": "Update aborted by user."})
                 return 0
+    # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-whatsnew
 
     # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-replace-core-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-replace-core
@@ -181,6 +185,8 @@ def cmd_update(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-migrate-config
     # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-migrate-config-algo
 
+    # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-update-kits-algo
+    # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-kits
     # ── Step 2: Update kits ──────────────────────────────────────────────
     ui.step("Updating kits...")
     from .kit import update_kit, regenerate_gen_aggregates
@@ -249,6 +255,8 @@ def cmd_update(argv: List[str]) -> int:
     if not args.dry_run:
         gen_result = regenerate_gen_aggregates(cypilot_dir)
         actions.update(gen_result)
+    # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-update-kits
+    # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-update-kits-algo
 
     # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-scaffold-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-ensure-scaffold
@@ -353,7 +361,7 @@ def cmd_update(argv: List[str]) -> int:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
+# @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-helpers
 def _ensure_file(path: Path, content: str, actions: Dict, key: str) -> None:
     """Create file only if it doesn't exist."""
     if path.is_file():
@@ -515,11 +523,12 @@ def _show_core_whatsnew(
     except EOFError:
         return False
     return response != "q"
+# @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-update-helpers
 
 # ---------------------------------------------------------------------------
 # Human-friendly formatter
 # ---------------------------------------------------------------------------
-
+# @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-update-format-output
 def _human_update_ok(data: Dict[str, Any]) -> None:
     dry = data.get("dry_run", False)
     status = data.get("status", "")
@@ -634,3 +643,4 @@ def _human_update_ok(data: Dict[str, Any]) -> None:
     else:
         ui.warn("Update finished with warnings (see above).")
     ui.blank()
+# @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-update-format-output

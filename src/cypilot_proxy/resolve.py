@@ -6,6 +6,7 @@ Walks directory tree to find project-installed skill, falls back to cache.
 @cpt-algo:cpt-cypilot-algo-core-infra-resolve-skill:p1
 """
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-resolve-helpers
 import re
 import sys
 import tomllib
@@ -114,7 +115,9 @@ def find_install_dir(project_root: Path) -> Optional[str]:
             return candidate
 
     return None
+# @cpt-end:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-resolve-helpers
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-resolve-helpers
 def get_cache_dir() -> Path:
     """Return the global Cypilot cache directory: ~/.cypilot/cache/"""
     return Path.home() / ".cypilot" / "cache"
@@ -122,6 +125,7 @@ def get_cache_dir() -> Path:
 def get_version_file() -> Path:
     """Return the version marker file path."""
     return get_cache_dir() / ".version"
+# @cpt-end:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-resolve-helpers
 
 def find_project_skill(start_dir: Optional[Path] = None) -> Optional[Path]:
     """
@@ -200,6 +204,7 @@ def resolve_skill(start_dir: Optional[Path] = None) -> Tuple[Optional[Path], str
     return None, "none"
     # @cpt-end:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-return-not-found
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-resolve-helpers
 def get_cached_version() -> Optional[str]:
     """Read the cached skill version from .version marker file."""
     version_file = get_version_file()
@@ -221,3 +226,4 @@ def get_project_version(skill_path: Path) -> Optional[str]:
     except (OSError, ValueError):
         pass
     return None
+# @cpt-end:cpt-cypilot-algo-core-infra-resolve-skill:p1:inst-resolve-helpers

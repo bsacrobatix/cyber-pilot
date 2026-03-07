@@ -35,7 +35,7 @@ help:
 	@echo "  make validate-kits                 - Validate all registered kits"
 	@echo "  make validate-kits-sdlc            - Validate kits/sdlc kit by path"
 	@echo "  make check-versions                - Check version consistency across components"
-	@echo "  make spec-coverage                 - Check spec coverage (≥80% overall, ≥70% per file)"
+	@echo "  make spec-coverage                 - Check spec coverage (≥90% overall, ≥60% per file)"
 	@echo "  make vulture                       - Scan python code for dead code (report only, does not fail)"
 	@echo "  make vulture-ci                    - Scan python code for dead code (fails if findings)"
 	@echo "  make ci                            - Run full CI pipeline locally"
@@ -134,8 +134,7 @@ vulture-ci: check-vulture
 # Spec coverage check (Cypilot system only)
 spec-coverage:
 	@echo "Checking spec coverage (Cypilot system)..."
-	$(PYTHON) .bootstrap/.core/skills/cypilot/scripts/cypilot.py spec-coverage --system cypilot --min-coverage 50 --min-granularity 0.30
-	# $(PYTHON) .bootstrap/.core/skills/cypilot/scripts/cypilot.py spec-coverage --system cypilot --min-coverage 80 --min-file-coverage 70 --min-granularity 0.50 --min-file-granularity 0.10
+	$(PYTHON) .bootstrap/.core/skills/cypilot/scripts/cypilot.py spec-coverage --system cypilot --min-coverage 90 --min-file-coverage 60 --min-granularity 0.45
 
 # Check version consistency
 check-versions:

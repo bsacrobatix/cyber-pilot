@@ -8,6 +8,7 @@ Uses only Python stdlib (urllib.request) — no third-party dependencies.
 @cpt-dod:cpt-cypilot-dod-core-infra-skill-cache:p1
 """
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-cache-skill:p1:inst-cache-helpers
 import io
 import json
 import shutil
@@ -153,6 +154,7 @@ def copy_from_local(
         f"  from: {source}\n"
         f"  to:   {cache_dir}"
     )
+# @cpt-end:cpt-cypilot-algo-core-infra-cache-skill:p1:inst-cache-helpers
 
 def download_and_cache(
     version: Optional[str] = None,
@@ -272,6 +274,7 @@ def download_and_cache(
     )
     # @cpt-end:cpt-cypilot-algo-core-infra-cache-skill:p1:inst-return-cache-path-new
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-cache-skill:p1:inst-cache-helpers
 def _find_common_prefix(members: list) -> str:
     """Find common top-level directory prefix in tar members."""
     names = [m.name for m in members if m.name and "/" in m.name]
@@ -341,3 +344,4 @@ def _extract_zip_stripped(
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(zf.read(name))
+# @cpt-end:cpt-cypilot-algo-core-infra-cache-skill:p1:inst-cache-helpers

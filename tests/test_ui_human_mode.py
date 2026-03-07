@@ -360,42 +360,46 @@ class TestHumanValidate(_HumanModeBase):
         self.assertIn("simple error string", out)
         self.assertIn("simple warning", out)
 
-
-class TestHumanSelfCheck(_HumanModeBase):
-    """Test _human_self_check formatter."""
-
-    def test_self_check_pass(self):
-        from cypilot.commands.self_check import _human_self_check
+    def test_validate_rich_issue_fields(self):
+        """Cover _format_issue with code, reasons, fixing_prompt, extra keys."""
+        from cypilot.commands.validate import _human_validate
         buf = io.StringIO()
         with redirect_stderr(buf):
-            _human_self_check({
-                "status": "PASS",
-                "kits_checked": 1,
-                "templates_checked": 3,
-                "results": [
-                    {"kit": "sdlc", "kind": "PRD", "status": "PASS"},
+            _human_validate({
+                "status": "FAIL", "error_count": 2, "warning_count": 1,
+                "errors": [
+                    {
+                        "message": "Missing ID", "code": "E001",
+                        "path": "DESIGN.md", "line": 5,
+                        "reasons": ["No template match", "Slug invalid"],
+                        "fixing_prompt": "Add an ID block",
+                        "id": "cpt-test-item",
+                    },
+                    {"message": "No location error"},
+                ],
+                "warnings": [
+                    {"message": "Warn with list field", "ids": ["a", "b"]},
                 ],
             })
         out = buf.getvalue()
-        self.assertIn("Self-Check", out)
-        self.assertIn("consistent", out)
+        self.assertIn("E001", out)
+        self.assertIn("No template match", out)
+        self.assertIn("Fix:", out)
+        self.assertIn("cpt-test-item", out)
+        self.assertIn("No location error", out)
+        self.assertIn("a, b", out)
 
-    def test_self_check_fail(self):
-        from cypilot.commands.self_check import _human_self_check
+    def test_validate_issue_location_without_line(self):
+        """Cover _issue_location with path but no line."""
+        from cypilot.commands.validate import _human_validate
         buf = io.StringIO()
         with redirect_stderr(buf):
-            _human_self_check({
-                "status": "FAIL",
-                "kits_checked": 1,
-                "templates_checked": 1,
-                "results": [
-                    {"kit": "sdlc", "kind": "PRD", "status": "FAIL", "error_count": 2,
-                     "errors": [{"message": "oops"}, "plain error"]},
-                ],
+            _human_validate({
+                "status": "FAIL", "error_count": 1, "warning_count": 0,
+                "errors": [{"message": "err", "path": "README.md"}],
             })
         out = buf.getvalue()
-        self.assertIn("failed", out)
-        self.assertIn("oops", out)
+        self.assertIn("README.md", out)
 
 
 class TestHumanValidateKits(_HumanModeBase):

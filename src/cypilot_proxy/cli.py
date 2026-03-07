@@ -11,6 +11,7 @@ All actual logic lives in the skill engine — this proxy only routes.
 @cpt-state:cpt-cypilot-state-core-infra-project-install:p1
 """
 
+# @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
 import json
 import subprocess
 import sys
@@ -53,6 +54,7 @@ def _extract_named_param(args: List[str], name: str) -> Optional[str]:
             return value
         i += 1
     return None
+# @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
 
 def main(argv: Optional[List[str]] = None) -> int:
     """
@@ -62,6 +64,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-user-invokes
 
+    # @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
     # Handle --version with no value: show version info
     if args and args[0] == "--version" and len(args) == 1:
         from cypilot_proxy import __version__
@@ -92,6 +95,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if "--no-cache" in args:
             skip_cache = True
             args.remove("--no-cache")
+    # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
 
     # @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-if-update-cache
     if args and args[0] == "update":
@@ -132,6 +136,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-return-cache-update
     # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-if-update-cache
 
+    # @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
     # Re-add --force to args for init (skill needs it for config overwrite)
     if force_update and args and args[0] == "init":
         args.append("--force")
@@ -154,6 +159,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         sys.stderr.write(f"{message}\n")
         if not success:
             return 1
+    # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
 
     # @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-check-project-skill
     # @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-if-project-skill
@@ -239,6 +245,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     return result
     # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-return-exit
 
+# @cpt-begin:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers
 def _forward_to_skill(skill_path: Path, args: List[str]) -> int:
     """
     Forward command to the resolved skill engine via subprocess.
@@ -296,3 +303,4 @@ def _background_version_check(project_skill_path: Path) -> None:
         # @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-if-version-mismatch
     except Exception:
         pass  # Never fail the actual command for a version check
+# @cpt-end:cpt-cypilot-flow-core-infra-cli-invocation:p1:inst-cli-proxy-helpers

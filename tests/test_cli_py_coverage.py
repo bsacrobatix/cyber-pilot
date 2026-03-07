@@ -1305,46 +1305,6 @@ class TestCLIPyCoverageListIdKindsBranches(unittest.TestCase):
 
 
 class TestCLIPyCoverageSelfCheckSkipBranches(unittest.TestCase):
-    def test_self_check_skips_invalid_kit_defs(self):
-        from cypilot import cli as cypilot_cli
-
-        with TemporaryDirectory() as td:
-            root = Path(td)
-            (root / ".git").mkdir()
-            adapter = root / ".cypilot-adapter"
-            adapter.mkdir()
-
-            reg = {
-                "version": "1.0",
-                "kits": {
-                    # invalid kit_def (not dict)
-                    "bad-kit-1": 1,
-                    # missing path
-                    "bad-kit-2": {},
-                    # path wrong type
-                    "bad-kit-3": {"path": 123},
-                },
-            }
-
-            with patch("cypilot.commands.self_check.find_project_root", return_value=root):
-                with patch("cypilot.commands.self_check.find_cypilot_directory", return_value=adapter):
-                    with patch("cypilot.commands.self_check.load_artifacts_meta") as mock_lam:
-                        from unittest.mock import MagicMock
-                        meta_m = MagicMock()
-                        meta_m.validate_all_slugs.return_value = []
-                        meta_m.kits = reg.get("kits", {})
-                        mock_lam.return_value = (meta_m, None)
-                    with patch("cypilot.commands.self_check.load_artifacts_meta", return_value=(meta_m, None)):
-                        from cypilot.commands.self_check import cmd_self_check
-                        buf = io.StringIO()
-                        with redirect_stdout(buf):
-                            rc = cmd_self_check(["--root", td])
-
-            self.assertEqual(rc, 0)
-            out = json.loads(buf.getvalue())
-            self.assertEqual(out.get("status"), "PASS")
-            self.assertEqual(out.get("kits_checked"), 0)
-
     def test_self_check_fail_on_validation_errors(self):
         from cypilot.cli import main
 
@@ -1386,28 +1346,6 @@ class TestCLIPyCoverageSelfCheckSkipBranches(unittest.TestCase):
                 self.assertEqual(out.get("status"), "PASS")
             finally:
                 os.chdir(cwd)
-
-    def test_self_check_does_not_depend_on_template_module(self):
-        from cypilot import cli as cypilot_cli
-
-        with TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            adapter = _bootstrap_project_root(root)
-            _bootstrap_self_check_kits(root, adapter, with_example=True, bad_example=False)
-
-            cwd = os.getcwd()
-            try:
-                os.chdir(root)
-                stdout = io.StringIO()
-                with redirect_stdout(stdout):
-                    from cypilot.commands.self_check import cmd_self_check
-                    exit_code = cmd_self_check([])
-                self.assertEqual(exit_code, 0)
-                out = json.loads(stdout.getvalue())
-                self.assertEqual(out.get("status"), "PASS")
-            finally:
-                os.chdir(cwd)
-
 
 class TestCLIPyCoverageValidateCode(unittest.TestCase):
     def test_validate_with_code_and_output_file(self):

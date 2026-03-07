@@ -59,7 +59,7 @@ Each kit is a file package: a collection of artifact definitions (rules, checkli
 
 - [x] `p1` - `cpt-cypilot-fr-core-config`
 
-**Design Response**: `{cypilot_path}/config/core.toml` holds system definitions, kit registrations (with configurable config output paths), and ignore lists. `{cypilot_path}/config/kits/<slug>/` directories hold all kit files — artifacts, workflows, per-kit SKILL.md, constraints, and scripts (all user-editable). `{cypilot_path}/.gen/` holds only top-level auto-generated files (`AGENTS.md`, `SKILL.md`, `README.md`). All TOML config files use deterministic serialization. Kit files are user-editable and preserved across updates via interactive diff.
+**Design Response**: The config directory (`{cypilot_path}/config/`) holds all project configuration. `core.toml` stores the project root, system definition (name, slug, kit), and kit registrations (format, path, version). `artifacts.toml` stores the artifact registry: system autodetect rules, ignore patterns, and codebase definitions. `AGENTS.md` and `SKILL.md` are user-editable extension points for agent navigation rules and skill instructions respectively. `{cypilot_path}/config/kits/<slug>/` directories hold all kit files — artifacts, workflows, per-kit SKILL.md, constraints, and scripts (all user-editable). Kit-specific config files (e.g., `pr-review.toml`) also live in `config/`. `{cypilot_path}/.gen/` holds only auto-generated aggregate files (`AGENTS.md`, `SKILL.md`, `README.md`) assembled from installed kits. All TOML config files use deterministic serialization. Kit files are user-editable and preserved across updates via interactive diff.
 
 ##### Deterministic Skill Engine
 
@@ -141,7 +141,7 @@ Each kit is a file package: a collection of artifact definitions (rules, checkli
 
 ##### Artifact Blueprint (DEPRECATED)
 
-- [x] `p1` - `cpt-cypilot-fr-core-blueprint`
+- [x] `p1` - ~~cpt-cypilot-fr-core-blueprint~~ (DEPRECATED)
 
 > **DEPRECATED per `cpt-cypilot-adr-remove-blueprint-system`**: The Blueprint Processor and blueprint files have been removed. Kits are now direct file packages — all kit resources (rules, templates, checklists, examples, constraints, workflows, scripts, SKILL.md) are maintained as ready-to-use files in `{cypilot_path}/config/kits/<slug>/`. There is no generation step. Kit updates use file-level diff (see `cpt-cypilot-fr-core-resource-diff`).
 
@@ -231,6 +231,28 @@ Each kit is a file package: a collection of artifact definitions (rules, checkli
 | `cpt-cypilot-nfr-security-integrity` | No untrusted code execution, deterministic results, no secrets in config | `cpt-cypilot-component-config-manager`, `cpt-cypilot-component-validator` | Validator reads files as text only — no eval/exec. Config Manager rejects files containing known secret patterns. All commands are pure functions of input state | Determinism test: same repo state → same validation output |
 | `cpt-cypilot-nfr-reliability-recoverability` | Actionable failure guidance, no settings loss on migration | `cpt-cypilot-component-config-manager`, `cpt-cypilot-component-skill-engine` | Config migration creates backup before applying changes. All error messages include file path, line number, and remediation steps | Migration test: upgrade config across 3 versions, verify no settings lost |
 | `cpt-cypilot-nfr-adoption-usability` | ≤ 5 decisions in init, ≤ 3 clarifying questions per workflow | `cpt-cypilot-component-cli-proxy`, `cpt-cypilot-component-skill-engine` | Init uses sensible defaults (all agents, all kits). CLI provides `--help` with usage examples for every command | Count decisions in init flow; count agent questions per workflow |
+| `cpt-cypilot-nfr-dry` | Every rule configured in exactly one place; no duplication | `cpt-cypilot-component-config-manager`, `cpt-cypilot-component-kit-manager` | Config is the single source of truth; kit constraints reference config, never duplicate it. Kit files are user-editable originals, not copies | Review config + constraints for duplicate rule definitions |
+| `cpt-cypilot-nfr-simplicity` | No unnecessary abstractions; minimal dependencies | All components | Python stdlib-only (see `cpt-cypilot-adr-python-stdlib-only`). Each component has a single responsibility. New abstractions require explicit justification | Dependency audit; component responsibility review |
+| `cpt-cypilot-nfr-ci-automation-first` | CLI tool usable in CI without human interaction; deterministic operations | `cpt-cypilot-component-skill-engine`, `cpt-cypilot-component-validator` | All validation and scanning commands are deterministic pure functions. Exit codes follow convention (0=PASS, 2=FAIL). Machine-readable output for all commands | CI integration test: run validation in non-interactive mode |
+| `cpt-cypilot-nfr-zero-harm` | No process imposition; lint pattern; no breakage | `cpt-cypilot-component-validator`, `cpt-cypilot-component-skill-engine` | Validator is advisory — never modifies files. Workflows are opt-in. Kit rules are configurable. Tool never touches code, builds, or tests | Verify no file mutations during validation; verify custom kit support |
+| `cpt-cypilot-nfr-upgradability` | Single-command upgrade; backward compatible; user edits preserved | `cpt-cypilot-component-kit-manager`, `cpt-cypilot-component-config-manager` | Kit updates use file-level diff with interactive prompts. Config migration creates backup and preserves all user settings. `.core/` replaced atomically | Upgrade test: modify kit files, upgrade, verify edits preserved |
+
+#### Architecture Decisions
+
+The following architecture decision records (ADRs) drive the design:
+
+- `cpt-cypilot-adr-remove-blueprint-system` — replace blueprint system with direct file package model
+- `cpt-cypilot-adr-python-stdlib-only` — Python 3.11+ with standard library only
+- `cpt-cypilot-adr-pipx-distribution` — pipx as global CLI distribution
+- `cpt-cypilot-adr-toml-json-formats` — TOML for config, dual-mode CLI output
+- `cpt-cypilot-adr-markdown-contract` — Markdown as universal contract format
+- `cpt-cypilot-adr-gh-cli-integration` — GitHub CLI for GitHub integration
+- `cpt-cypilot-adr-proxy-cli-pattern` — stateless proxy pattern for global CLI
+- `cpt-cypilot-adr-three-directory-layout` — three-directory layout (.core/.gen/config)
+- `cpt-cypilot-adr-two-workflow-model` — two-workflow model (generate/analyze)
+- `cpt-cypilot-adr-skill-md-entry-point` — SKILL.md as single agent entry point
+- `cpt-cypilot-adr-structured-id-format` — structured cpt-* ID format with @cpt-* code tags
+- `cpt-cypilot-adr-git-style-conflict-markers` — git-style conflict markers for interactive merge
 
 ### 1.3 Architecture Layers
 
@@ -336,13 +358,13 @@ Nothing that can be automated MUST require manual upkeep. Agent entry points are
 
 - [x] `p1` - **ID**: `cpt-cypilot-constraint-python-stdlib`
 
-Core skill engine uses Python 3.11+ standard library only (requires `tomllib` from stdlib). No third-party dependencies in core. This ensures the tool works in any Python 3.11+ environment without dependency conflicts. Kits may declare their own dependencies, managed separately.
+Core skill engine uses Python 3.11+ standard library only (requires `tomllib` from stdlib). No third-party dependencies in core. This ensures the tool works in any Python 3.11+ environment without dependency conflicts. Kits may declare their own dependencies, managed separately. See `cpt-cypilot-adr-python-stdlib-only` for decision rationale.
 
 #### Markdown as Contract
 
 - [x] `p1` - **ID**: `cpt-cypilot-constraint-markdown-contract`
 
-Artifacts are Markdown files with structured `cpt-*` IDs. Markdown is the contract format between humans, agents, and the tool. Workflows, templates, checklists, and rules are all Markdown. This leverages the universal readability of Markdown while enabling deterministic parsing of structured elements.
+Artifacts are Markdown files with structured `cpt-*` IDs. Markdown is the contract format between humans, agents, and the tool. Workflows, templates, checklists, and rules are all Markdown. This leverages the universal readability of Markdown while enabling deterministic parsing of structured elements. See `cpt-cypilot-adr-markdown-contract` for decision rationale.
 
 #### Git Project Heuristics
 
@@ -1088,7 +1110,19 @@ The following design domains are not applicable to Cypilot and are explicitly ex
 ## 5. Traceability
 
 - **PRD**: [PRD.md](./PRD.md)
-- **ADRs**: [ADR/](./ADR/) — `cpt-cypilot-adr-remove-blueprint-system` (replace blueprint system with direct file package model)
+- **ADRs**: [ADR/](./ADR/):
+  - `cpt-cypilot-adr-remove-blueprint-system` — replace blueprint system with direct file package model
+  - `cpt-cypilot-adr-python-stdlib-only` — Python 3.11+ with standard library only
+  - `cpt-cypilot-adr-pipx-distribution` — pipx as global CLI distribution
+  - `cpt-cypilot-adr-toml-json-formats` — TOML for config, JSON for CLI output
+  - `cpt-cypilot-adr-markdown-contract` — Markdown as universal contract format
+  - `cpt-cypilot-adr-gh-cli-integration` — GitHub CLI for GitHub integration
+  - `cpt-cypilot-adr-proxy-cli-pattern` — stateless proxy pattern for global CLI
+  - `cpt-cypilot-adr-three-directory-layout` — three-directory layout (.core/.gen/config)
+  - `cpt-cypilot-adr-two-workflow-model` — two-workflow model (generate/analyze)
+  - `cpt-cypilot-adr-skill-md-entry-point` — SKILL.md as single agent entry point
+  - `cpt-cypilot-adr-structured-id-format` — structured cpt-* ID format with @cpt-* code tags
+  - `cpt-cypilot-adr-git-style-conflict-markers` — git-style conflict markers for interactive merge
 - **Features**: [features/](./features/) — `core-infra.md`, `traceability-validation.md`, `sdlc-kit.md`, `agent-integration.md`, `pr-workflows.md`, `version-config.md`, `developer-experience.md`, `spec-coverage.md`, `v2-v3-migration.md`
 
 ### Specifications

@@ -127,6 +127,10 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
     2. [x] - `p1` - **RETURN** error with validation details and rollback confirmation — `inst-return-validation-fail`
 16. [x] - `p1` - **RETURN** migration success summary (systems migrated, artifacts preserved, config files created, core_install_type cleaned) — `inst-return-success`
 
+**Supporting**:
+- [x] - `p1` - Imports, constants (cache dir, default paths, state machine values, install type enums), and general helpers (`_strip_none`, `_coerce_enum_bools`, `_convert_constraints_v2_to_v3`) — `inst-migrate-datamodel`
+- [x] - `p1` - Rollback helper, gitmodule entry remover, system converter, tree copier, agent file cleanup, default kit installer, human output formatter, CLI entry points — `inst-migrate-helpers`
+
 ### Migrate Config Format (JSON → TOML)
 
 - [x] `p1` - **ID**: `cpt-cypilot-flow-v2-v3-migration-migrate-config`
@@ -154,6 +158,9 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
    3. [x] - `p1` - **CATCH** parse or validation error — `inst-catch-convert-error`
       1. [x] - `p1` - Keep `.json` file, log error with file path and reason — `inst-log-convert-error`
 4. [x] - `p1` - **RETURN** conversion summary (converted count, skipped count, error details) — `inst-return-config-summary`
+
+**Supporting**:
+- [x] - `p1` - Config flow setup: load core.toml for kit slug, scan directory resolution — `inst-config-setup`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -197,6 +204,9 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
 7. [x] - `p1` - **IF** agent entry point directories (`.windsurf/`, `.cursor/`, `.claude/`, `.github/`) exist, copy to backup — `inst-backup-agent-dirs`
 8. [x] - `p1` - Write backup manifest (list of backed-up paths, timestamps, v2 version info, core_install_type) — `inst-write-manifest`
 9. [x] - `p1` - **RETURN** backup_path — `inst-return-backup-path`
+
+**Supporting**:
+- [x] - `p1` - Rollback function: restore backed-up items from manifest — `inst-backup-rollback`
 
 ### Detect Core Install Type
 
@@ -242,6 +252,9 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
    1. [x] - `p1` - Remove the entire core_path directory — `inst-remove-plain-dir`
    2. [x] - `p1` - **RETURN** {success: true, cleaned_type: PLAIN_DIR, warnings: []} — `inst-return-plain-ok`
 
+**Supporting**:
+- [x] - `p1` - Gitmodule entry removal helper (`_remove_gitmodule_entry`) — `inst-cleanup-helpers`
+
 ### Convert Artifacts Registry
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-v2-v3-migration-convert-artifacts-registry`
@@ -277,6 +290,9 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
 7. [x] - `p1` - Write `{cypilot_path}/config/artifacts.toml` — `inst-write-artifacts-toml`
 8. [x] - `p1` - **RETURN** conversion result (systems count, kits count, warnings) — `inst-return-artifacts-result`
 
+**Supporting**:
+- [x] - `p1` - Single system converter (`_convert_system`): field mapping, autodetect rules, children recursion — `inst-convert-system-helper`
+
 ### Migrate Kits
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-v2-v3-migration-migrate-kits`
@@ -303,6 +319,9 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
       5. [x] - `p1` - Emit warning: "Kit '{slug}' is not a known kit. Copied as-is — templates, rules, and constraints were NOT regenerated. Manual review recommended." — `inst-warn-custom-kit`
       6. [x] - `p1` - Add to custom_kits[] — `inst-add-custom-kit`
 2. [x] - `p1` - **RETURN** {vanilla_kits, custom_kits, warnings} — `inst-return-kits-result`
+
+**Supporting**:
+- [x] - `p1` - Tree copy helper, agent workflow dirs constant, adapter agent cleanup, default kit installer — `inst-kits-helpers`
 
 ### Convert Adapter AGENTS.md
 
@@ -420,6 +439,9 @@ This feature addresses the need for a seamless upgrade path from Cypilot v2 to v
 1. [x] - `p1` - Validate input is a dict; raise `TypeError` if not - `inst-validate-input`
 2. [x] - `p1` - **FOR EACH** key: rename camelCase to snake_case, normalize nested prompts entries via `_normalize_pr_review_entry` - `inst-rename-keys`
 3. [x] - `p1` - **RETURN** normalized dict - `inst-return-normalized`
+
+**Supporting**:
+- [x] - `p1` - PR-review key map, default kit slug, path rewrite builder, entry normalizer, already-migrated set - `inst-pr-review-helpers`
 
 ### Migrate Adapter JSON Configs
 

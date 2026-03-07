@@ -58,7 +58,7 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 
 ### Update Project Installation
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-version-config-update`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-version-config-update`
 
 **Actor**: `cpt-cypilot-actor-user`
 
@@ -77,11 +77,15 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 3. [x] - `p1` - Replace `.core/` from cache (always force-overwrite) - `inst-replace-core`
 4. [x] - `p1` - Detect directory layout; if old layout detected, trigger automatic restructuring using `cpt-cypilot-algo-version-config-layout-restructure` - `inst-detect-layout`
 5. [x] - `p1` - Migrate `{cypilot_path}/config/core.toml` preserving all user settings - `inst-migrate-config`
-6. [ ] - `p1` - For each kit: update via file-level diff (unchanged files skipped, changed files prompt accept/decline/modify) - `inst-update-kits`
+6. [x] - `p1` - For each kit: update via file-level diff (unchanged files skipped, changed files prompt accept/decline/modify) - `inst-update-kits`
 7. [x] - `p1` - Ensure config scaffold files exist (create only if missing) - `inst-ensure-scaffold`
 8. [x] - `p1` - Regenerate agent entry points - `inst-regenerate-agents`
 9. [x] - `p1` - Run self-check to verify kit integrity (`run_self_check_from_meta`); include result in report, WARN if failed - `inst-self-check`
 10. [x] - `p1` - **RETURN** update report with actions taken and self-check result - `inst-return-report`
+11. [x] - `p1` - Imports, constants, and module setup for update command - `inst-update-imports`
+12. [x] - `p1` - Display core whatsnew entries (cache vs installed) before applying update - `inst-whatsnew`
+13. [x] - `p1` - Helper functions: ensure file creation, config README, auto-regenerate agents, read/show whatsnew - `inst-update-helpers`
+14. [x] - `p1` - Human-friendly formatter for update report output - `inst-update-format-output`
 
 ### Manage Config via CLI
 
@@ -108,7 +112,7 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 1. [x] - `p1` - Replace `.core/` from cache - `inst-replace-core-algo`
 2. [x] - `p1` - Detect and auto-restructure old directory layout - `inst-detect-layout-algo`
 3. [x] - `p1` - Migrate `{cypilot_path}/config/core.toml` - `inst-migrate-config-algo`
-4. [ ] - `p1` - For each kit: file-level diff, interactive accept/decline/modify per changed file - `inst-update-kits-algo`
+4. [x] - `p1` - For each kit: file-level diff, interactive accept/decline/modify per changed file - `inst-update-kits-algo`
 5. [ ] - `p1` - (Removed — no separate regen step; kit files are updated directly) - `inst-regen-algo`
 6. [x] - `p1` - Ensure config scaffold - `inst-scaffold-algo`
 
