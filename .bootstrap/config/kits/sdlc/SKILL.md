@@ -5,7 +5,7 @@ description: "Artifacts: ADR, CODEBASE, DECOMPOSITION, DESIGN, FEATURE, PR-CODE-
 
 # Cypilot Skill — Kit `sdlc`
 
-Generated from kit `sdlc` blueprints.
+Kit `sdlc` skill extensions.
 
 ## ADR
 

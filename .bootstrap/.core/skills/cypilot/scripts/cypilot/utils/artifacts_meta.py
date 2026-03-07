@@ -4,8 +4,6 @@ Cypilot Validator - Artifacts Metadata Registry
 Parses and provides access to artifacts.toml with the hierarchical system structure.
 
 @cpt-flow:cpt-cypilot-flow-core-infra-cli-invocation:p1
-@cpt-algo:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1
-@cpt-state:cpt-cypilot-state-sdlc-kit-pipeline-position:p1
 """
 
 import fnmatch
@@ -852,78 +850,36 @@ class ArtifactsMeta:
     # @cpt-end:cpt-cypilot-algo-core-infra-registry-parsing:p1:inst-reg-expand-autodetect
 
     # === Pipeline Resolution ===
-    # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-define-ordering
     PIPELINE_ORDER = ["PRD", "DESIGN", "ADR", "DECOMPOSITION", "FEATURE"]
-    # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-define-ordering
 
     def resolve_pipeline(self, system_slug: str) -> dict:  # noqa: vulture
         """Resolve pipeline position for a system."""
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-invoke-pipeline
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-load-artifacts
-        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-classify-artifacts
         present_kinds: set = set()
         for art, node in self.iter_all_artifacts():
             if node.slug == system_slug or system_slug in node.get_hierarchy_prefix():
                 present_kinds.add(str(art.kind).upper())
-        # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-classify-artifacts
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-load-artifacts
 
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-resolve-position
-        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-identify-present-missing
         missing_kinds = [k for k in self.PIPELINE_ORDER if k not in present_kinds]
-        # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-identify-present-missing
 
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-if-no-artifacts
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-detect-project-type
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-if-greenfield
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-if-brownfield
         # (greenfield/brownfield detection deferred to agent workflow;
         #  resolve_pipeline returns missing kinds for agent to decide)
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-if-brownfield
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-if-greenfield
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-detect-project-type
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-if-no-artifacts
 
-        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-foreach-missing
         recommendation = None
         for kind in missing_kinds:
-            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-check-dependencies
             idx = self.PIPELINE_ORDER.index(kind)
             deps_satisfied = all(d in present_kinds for d in self.PIPELINE_ORDER[:idx])
-            # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-check-dependencies
-            # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-if-deps-satisfied
             if deps_satisfied:
                 recommendation = kind
                 break
-            # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-if-deps-satisfied
-        # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-foreach-missing
 
-        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-if-all-present
         if not missing_kinds:
             recommendation = "CODE"
-        # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-if-all-present
 
-        # @cpt-begin:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-return-status
-        # @cpt-begin:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-return-next
-        # @cpt-begin:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-prd-registered
-        # @cpt-begin:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-design-registered
-        # @cpt-begin:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-decomposition-registered
-        # @cpt-begin:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-feature-registered
-        # @cpt-begin:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-all-features
         return {
             "present": sorted(present_kinds),
             "missing": missing_kinds,
             "recommendation": recommendation,
         }
-        # @cpt-end:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-all-features
-        # @cpt-end:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-feature-registered
-        # @cpt-end:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-decomposition-registered
-        # @cpt-end:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-design-registered
-        # @cpt-end:cpt-cypilot-state-sdlc-kit-pipeline-position:p1:inst-prd-registered
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-return-next
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-resolve-position
-        # @cpt-end:cpt-cypilot-flow-sdlc-kit-pipeline:p1:inst-invoke-pipeline
-        # @cpt-end:cpt-cypilot-algo-sdlc-kit-resolve-pipeline:p1:inst-return-status
 
     # @cpt-begin:cpt-cypilot-algo-core-infra-registry-parsing:p1:inst-reg-query-methods
     # === Kit Methods ===

@@ -411,7 +411,7 @@ Select review depth based on ADR complexity and impact:
 When reviewing PRs that add or change Architecture Decision Records, additionally focus on:
 
 - [ ] Ensure the problem is module/system scoped, not generic and repeatable
-- [ ] Compliance with `{cypilot_path}/config/kits/sdlc/artifacts/ADR/template.md` structure (generated from blueprint)
+- [ ] Compliance with `{cypilot_path}/config/kits/sdlc/artifacts/ADR/template.md` structure
 - [ ] Ensure the problem is not already solved by other existing ADRs in the project ADR directory (see `{cypilot_path}/config/artifacts.toml` for path)
 - [ ] Alternatives are genuinely different approaches (not straw men)
 - [ ] Decision rationale is concrete and traceable to project constraints

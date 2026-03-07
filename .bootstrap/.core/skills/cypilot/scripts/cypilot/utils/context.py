@@ -13,6 +13,7 @@ Use CypilotContext.load() to initialize on CLI startup.
 @cpt-flow:cpt-cypilot-flow-core-infra-cli-invocation:p1
 """
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-context-loading:p1:inst-ctx-datamodel
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
@@ -37,6 +38,7 @@ class CypilotContext:
     kits: Dict[str, LoadedKit]  # kit_id -> LoadedKit
     registered_systems: Set[str]
     _errors: List[Dict[str, object]] = field(default_factory=list)
+    # @cpt-end:cpt-cypilot-algo-core-infra-context-loading:p1:inst-ctx-datamodel
 
     @classmethod
     def load(cls, start_path: Optional[Path] = None) -> Optional["CypilotContext"]:
@@ -175,6 +177,7 @@ class CypilotContext:
         # @cpt-end:cpt-cypilot-algo-core-infra-context-loading:p1:inst-ctx-return
         return ctx
 
+    # @cpt-begin:cpt-cypilot-algo-core-infra-context-loading:p1:inst-ctx-globals
     def get_known_id_kinds(self) -> Set[str]:
         kinds: Set[str] = set()
         for loaded_kit in self.kits.values():
@@ -213,3 +216,4 @@ __all__ = [
     "set_context",
     "ensure_context",
 ]
+# @cpt-end:cpt-cypilot-algo-core-infra-context-loading:p1:inst-ctx-globals

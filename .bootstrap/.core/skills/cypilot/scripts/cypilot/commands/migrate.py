@@ -30,6 +30,7 @@ to v3 (blueprint-based, artifacts.toml, three-directory layout).
 @cpt-dod:cpt-cypilot-dod-v2-v3-migration-json-to-toml:p1
 """
 
+# @cpt-begin:cpt-cypilot-flow-v2-v3-migration-migrate-project:p1:inst-migrate-datamodel
 import argparse
 import json
 import os
@@ -130,6 +131,7 @@ def _convert_constraints_v2_to_v3(v2_data: Dict[str, Any]) -> Dict[str, Any]:
             if isinstance(kind_data, dict) and "toc" not in kind_data:
                 kind_data["toc"] = False
     return _strip_none({"artifacts": coerced})
+# @cpt-end:cpt-cypilot-flow-v2-v3-migration-migrate-project:p1:inst-migrate-datamodel
 
 # ===========================================================================
 # WP1: V2 Detection
@@ -366,6 +368,7 @@ def backup_v2_state(
     return backup_dir
     # @cpt-end:cpt-cypilot-algo-v2-v3-migration-backup-v2-state:p1:inst-return-backup-path
 
+# @cpt-begin:cpt-cypilot-algo-v2-v3-migration-backup-v2-state:p1:inst-backup-rollback
 def _rollback(project_root: Path, backup_dir: Path) -> Dict[str, Any]:
     """Restore v2 state from backup. Returns rollback result."""
     manifest_file = backup_dir / "manifest.json"
@@ -402,6 +405,7 @@ def _rollback(project_root: Path, backup_dir: Path) -> Dict[str, Any]:
         "restored": restored,
         "errors": errors,
     }
+# @cpt-end:cpt-cypilot-algo-v2-v3-migration-backup-v2-state:p1:inst-backup-rollback
 
 def cleanup_core_path(
     project_root: Path,
@@ -553,6 +557,7 @@ def cleanup_core_path(
         }
     # @cpt-end:cpt-cypilot-algo-v2-v3-migration-cleanup-core-path:p1:inst-cleanup-plain-dir
 
+# @cpt-begin:cpt-cypilot-algo-v2-v3-migration-cleanup-core-path:p1:inst-cleanup-helpers
 def _remove_gitmodule_entry(content: str, path: str) -> str:
     """Remove a [submodule "..."] block from .gitmodules content by path."""
     lines = content.splitlines(True)
@@ -582,6 +587,7 @@ def _remove_gitmodule_entry(content: str, path: str) -> str:
                 continue
         result.append(line)
     return "".join(result)
+# @cpt-end:cpt-cypilot-algo-v2-v3-migration-cleanup-core-path:p1:inst-cleanup-helpers
 
 # ===========================================================================
 # WP3: Config Conversion
@@ -665,6 +671,7 @@ def convert_artifacts_registry(
     }
     # @cpt-end:cpt-cypilot-algo-v2-v3-migration-convert-artifacts-registry:p1:inst-return-artifacts-result
 
+# @cpt-begin:cpt-cypilot-algo-v2-v3-migration-convert-artifacts-registry:p1:inst-convert-system-helper
 def _convert_system(
     system: Dict[str, Any],
     kit_slug_map: Dict[str, str],
@@ -710,6 +717,7 @@ def _convert_system(
         v3["children"] = [_convert_system(c, kit_slug_map) for c in children]
 
     return v3
+# @cpt-end:cpt-cypilot-algo-v2-v3-migration-convert-artifacts-registry:p1:inst-convert-system-helper
 
 def convert_agents_md(
     project_root: Path,
@@ -952,6 +960,7 @@ def migrate_kits(
     }
     # @cpt-end:cpt-cypilot-algo-v2-v3-migration-migrate-kits:p1:inst-return-kits-result
 
+# @cpt-begin:cpt-cypilot-algo-v2-v3-migration-migrate-kits:p1:inst-kits-helpers
 def _copy_tree_contents(src: Path, dst: Path) -> None:
     """Copy contents of src directory into dst (merging, not replacing)."""
     for item in src.iterdir():
@@ -1125,6 +1134,7 @@ def _install_default_kit_from_cache(
         interactive=False,
         auto_approve=True,
     )
+# @cpt-end:cpt-cypilot-algo-v2-v3-migration-migrate-kits:p1:inst-kits-helpers
 
 
 # ===========================================================================
@@ -1777,6 +1787,7 @@ def _write_gen_agents(gen_dir: Path, project_name: str) -> None:
 # @cpt-algo:cpt-cypilot-algo-v2-v3-migration-normalize-pr-review:p1
 # ===========================================================================
 
+# @cpt-begin:cpt-cypilot-algo-v2-v3-migration-normalize-pr-review:p1:inst-pr-review-helpers
 # Key mapping for pr-review.json → pr-review.toml migration
 _PR_REVIEW_KEY_MAP = {
     "dataDir": "data_dir",
@@ -1843,6 +1854,7 @@ def _normalize_pr_review_entry(
 
 # Files already handled by earlier migration steps — skip in generic pass
 _ALREADY_MIGRATED = {"artifacts.json", "constraints.json"}
+# @cpt-end:cpt-cypilot-algo-v2-v3-migration-normalize-pr-review:p1:inst-pr-review-helpers
 
 # @cpt-algo:cpt-cypilot-algo-v2-v3-migration-migrate-adapter-json:p1
 def _migrate_adapter_json_configs(
@@ -1882,6 +1894,7 @@ def _migrate_adapter_json_configs(
     return converted, failed
     # @cpt-end:cpt-cypilot-algo-v2-v3-migration-migrate-adapter-json:p1:inst-return-results
 
+# @cpt-begin:cpt-cypilot-flow-v2-v3-migration-migrate-config:p1:inst-config-setup
 def run_migrate_config(project_root: Path) -> Dict[str, Any]:
     """Convert remaining JSON config files to TOML.
 
@@ -1902,6 +1915,7 @@ def run_migrate_config(project_root: Path) -> Dict[str, Any]:
             )
         except Exception:
             pass
+# @cpt-end:cpt-cypilot-flow-v2-v3-migration-migrate-config:p1:inst-config-setup
 
     # @cpt-begin:cpt-cypilot-flow-v2-v3-migration-migrate-config:p1:inst-scan-json-files
     scan_dirs = []
@@ -1965,6 +1979,7 @@ def run_migrate_config(project_root: Path) -> Dict[str, Any]:
 # WP6: Human output formatters
 # ===========================================================================
 
+# @cpt-begin:cpt-cypilot-flow-v2-v3-migration-migrate-project:p1:inst-migrate-helpers
 def _human_migrate_result(data: Dict[str, Any]) -> None:
     """Format the final migration result for human output."""
     status = data.get("status", "")
@@ -2006,11 +2021,13 @@ def _human_migrate_result(data: Dict[str, Any]) -> None:
             ui.detail("backup", backup_dir)
     else:
         ui.info(f"Status: {status}" + (f" — {message}" if message else ""))
+# @cpt-end:cpt-cypilot-flow-v2-v3-migration-migrate-project:p1:inst-migrate-helpers
 
 # ===========================================================================
 # WP6: CLI Entry Points
 # ===========================================================================
 
+# @cpt-begin:cpt-cypilot-flow-v2-v3-migration-migrate-project:p1:inst-migrate-helpers
 def cmd_migrate(argv: List[str]) -> int:
     """CLI handler for `cypilot migrate`."""
     p = argparse.ArgumentParser(
@@ -2067,3 +2084,4 @@ def cmd_migrate_config(argv: List[str]) -> int:
     ui.result(result)
 
     return 0
+# @cpt-end:cpt-cypilot-flow-v2-v3-migration-migrate-project:p1:inst-migrate-helpers

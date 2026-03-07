@@ -11,6 +11,7 @@ Measures two metrics:
 @cpt-algo:cpt-cypilot-algo-spec-coverage-granularity:p1
 @cpt-algo:cpt-cypilot-algo-spec-coverage-report:p1
 """
+# @cpt-begin:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-datamodel
 from __future__ import annotations
 
 import re
@@ -52,11 +53,12 @@ class CoverageReport:
     granularity_score: float
     per_file: List[FileCoverage]
     flagged_files: List[str]  # files with granularity < 0.5
+# @cpt-end:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-datamodel
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
+# @cpt-begin:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-helpers
 def _is_blank_or_comment(line: str, ext: str, state: Optional[Dict[str, Any]] = None) -> bool:
     """Check if a line is blank or a comment for the given file extension.
 
@@ -102,10 +104,28 @@ def _is_blank_or_comment(line: str, ext: str, state: Optional[Dict[str, Any]] = 
 
     return False
 
+def _build_ranges(sorted_lines: List[int]) -> List[Tuple[int, int]]:
+    """Build contiguous ranges from sorted line numbers."""
+    if not sorted_lines:
+        return []
+    ranges: List[Tuple[int, int]] = []
+    start = sorted_lines[0]
+    end = start
+    for ln in sorted_lines[1:]:
+        if ln == end + 1:
+            end = ln
+        else:
+            ranges.append((start, end))
+            start = ln
+            end = ln
+    ranges.append((start, end))
+    return ranges
+# @cpt-end:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-helpers
+
 # ---------------------------------------------------------------------------
 # Scan a single file
 # ---------------------------------------------------------------------------
-
+# @cpt-begin:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-init
 def scan_file_coverage(path: Path) -> Optional[FileCoverage]:
     """Scan a code file and calculate its coverage metrics.
 
@@ -119,6 +139,7 @@ def scan_file_coverage(path: Path) -> Optional[FileCoverage]:
     lines = text.splitlines()
     total_lines = len(lines)
     ext = path.suffix.lower()
+    # @cpt-end:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-init
 
     # @cpt-begin:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-count-lines
     effective_lines = 0
@@ -221,23 +242,6 @@ def scan_file_coverage(path: Path) -> Optional[FileCoverage]:
     )
     # @cpt-end:cpt-cypilot-algo-spec-coverage-scan:p1:inst-scan-return
 
-def _build_ranges(sorted_lines: List[int]) -> List[Tuple[int, int]]:
-    """Build contiguous ranges from sorted line numbers."""
-    if not sorted_lines:
-        return []
-    ranges: List[Tuple[int, int]] = []
-    start = sorted_lines[0]
-    end = start
-    for ln in sorted_lines[1:]:
-        if ln == end + 1:
-            end = ln
-        else:
-            ranges.append((start, end))
-            start = ln
-            end = ln
-    ranges.append((start, end))
-    return ranges
-
 # ---------------------------------------------------------------------------
 # Aggregate metrics
 # ---------------------------------------------------------------------------
@@ -310,6 +314,7 @@ def calculate_metrics(file_coverages: List[FileCoverage]) -> CoverageReport:
 # Report generation (coverage.py JSON format)
 # ---------------------------------------------------------------------------
 
+# @cpt-begin:cpt-cypilot-algo-spec-coverage-report:p1:inst-report-datamodel
 def generate_report(report: CoverageReport, *, verbose: bool = False, project_root: Optional[Path] = None) -> Dict:
     """Generate JSON report matching coverage.py structure."""
     def _rel(p: str) -> str:
@@ -319,6 +324,7 @@ def generate_report(report: CoverageReport, *, verbose: bool = False, project_ro
             except ValueError:
                 pass
         return p
+    # @cpt-end:cpt-cypilot-algo-spec-coverage-report:p1:inst-report-datamodel
 
     # @cpt-begin:cpt-cypilot-algo-spec-coverage-report:p1:inst-report-summary
     summary = {

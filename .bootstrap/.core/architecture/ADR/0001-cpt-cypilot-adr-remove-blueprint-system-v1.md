@@ -146,7 +146,7 @@ This decision directly addresses the following requirements and design elements:
 
 * `cpt-cypilot-fr-core-kits` — Simplifies the Extensible Kit System from blueprint-based generation to direct file management
 * `cpt-cypilot-fr-core-resource-diff` — Redefines the Resource Diff Engine as the primary kit update mechanism (file-level diff with interactive prompts)
-* `cpt-cypilot-fr-core-blueprint` — Deprecates and removes the Artifact Blueprint requirement entirely
+* cpt-cypilot-fr-core-blueprint (see DESIGN — DEPRECATED) — Deprecates and removes the Artifact Blueprint requirement entirely
 * cpt-cypilot-component-blueprint-processor — Removes this component from the architecture
 * `cpt-cypilot-component-kit-manager` — Simplifies Kit Manager to file copy + file-level diff (no generation, no hash detection)
 * `cpt-cypilot-principle-plugin-extensibility` — Redefines kit extensibility as file packages rather than blueprint packages

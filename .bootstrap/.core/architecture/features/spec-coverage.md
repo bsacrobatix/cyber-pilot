@@ -82,6 +82,10 @@ Without spec coverage, teams have no visibility into which parts of the codebase
 8. [x] - `p1` - **IF** any threshold flag set AND metric below threshold → exit code 2 - `inst-if-threshold`
 9. [x] - `p1` - **RETURN** JSON report (summary, per-file stats, uncovered files) - `inst-return-report`
 
+**Supporting**:
+- [x] - `p1` - Imports and module setup for spec-coverage command - `inst-coverage-imports`
+- [x] - `p1` - Helper functions: relative path formatting, output routing, range formatting, human-friendly report display - `inst-coverage-helpers`
+
 ## 3. Processes / Business Logic (CDSL)
 
 ### Scan Code Coverage
@@ -98,6 +102,9 @@ Without spec coverage, teams have no visibility into which parts of the codebase
 3. [x] - `p1` - Scan for `@cpt-begin`/`@cpt-end` block markers (range-level coverage) - `inst-scan-block-markers`
 4. [x] - `p1` - Calculate covered line ranges: lines between block marker pairs are covered; file-level scope markers cover all lines - `inst-scan-calc-ranges`
 5. [x] - `p1` - **RETURN** file coverage record with ranges and marker counts - `inst-scan-return`
+6. [x] - `p1` - Define coverage data model: FileCoverage and CoverageReport dataclasses, imports - `inst-scan-datamodel`
+7. [x] - `p1` - Helper functions: blank/comment line detection, contiguous range building - `inst-scan-helpers`
+8. [x] - `p1` - File scan initialization: read file, detect markers in loop, count scope/block markers - `inst-scan-init`
 
 ### Calculate Coverage Metrics
 
@@ -145,6 +152,9 @@ A file with good granularity has approximately 1 CDSL instruction (`@cpt-begin`/
 2. [x] - `p1` - Build per-file section: path, total lines, covered lines, coverage %, granularity, uncovered ranges - `inst-report-per-file`
 3. [x] - `p1` - **IF** verbose, include marker details per file - `inst-report-verbose`
 4. [x] - `p1` - **RETURN** formatted JSON report - `inst-report-return`
+
+**Supporting**:
+- [x] - `p1` - Report function signature and relative path helper - `inst-report-datamodel`
 
 ## 4. States (CDSL)
 

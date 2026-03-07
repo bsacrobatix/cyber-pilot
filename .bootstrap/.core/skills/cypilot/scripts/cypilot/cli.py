@@ -9,6 +9,7 @@ IMPORTANT: This module MUST NOT contain business logic.
 - All validation, scanning, and transformation logic MUST live in dedicated modules under cypilot.utils or command modules.
 """
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-route-command:p1:inst-route-helpers
 import sys
 import json
 from pathlib import Path
@@ -115,11 +116,13 @@ def _cmd_migrate(argv: List[str]) -> int:
 def _cmd_migrate_config(argv: List[str]) -> int:
     from .commands.migrate import cmd_migrate_config
     return cmd_migrate_config(argv)
+# @cpt-end:cpt-cypilot-algo-core-infra-route-command:p1:inst-route-helpers
 
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-route-command:p1:inst-route-helpers
 def main(argv: Optional[List[str]] = None) -> int:
     argv_list = list(argv) if argv is not None else sys.argv[1:]
 
@@ -208,6 +211,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             ui.hint("Legacy aliases: validate-code → validate, validate-rules/self-check → validate-kits")
             ui.blank()
         return 0
+    # @cpt-end:cpt-cypilot-algo-core-infra-route-command:p1:inst-route-helpers
 
     # @cpt-begin:cpt-cypilot-algo-core-infra-route-command:p1:inst-parse-command
     # Backward compatibility: if first arg starts with --, assume validate command
@@ -304,7 +308,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # @cpt-end:cpt-cypilot-algo-core-infra-route-command:p1:inst-parse-args
     # @cpt-end:cpt-cypilot-algo-core-infra-route-command:p1:inst-lookup-handler
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-route-command:p1:inst-route-helpers
 if __name__ == "__main__":
     raise SystemExit(main())
 
 __all__ = ["main"]
+# @cpt-end:cpt-cypilot-algo-core-infra-route-command:p1:inst-route-helpers

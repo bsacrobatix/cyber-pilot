@@ -1,3 +1,4 @@
+# @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-imports
 import argparse
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ from ..utils.constraints import ArtifactRecord, cross_validate_artifacts, error 
 from ..utils.document import scan_cdsl_instructions, scan_cpt_ids
 from ..utils.fixing import enrich_issues
 from ..utils.ui import ui
+# @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-imports
 
 # @cpt-flow:cpt-cypilot-flow-traceability-validation-validate:p1
 # @cpt-dod:cpt-cypilot-dod-traceability-validation-cross-refs:p1
@@ -169,6 +171,7 @@ def cmd_validate(argv: List[str]) -> int:
         return 0
     # @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-resolve-artifacts
 
+    # @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-if-registry-fail
     # Validate each artifact
     all_errors: List[Dict[str, object]] = []
     all_warnings: List[Dict[str, object]] = []
@@ -196,6 +199,7 @@ def cmd_validate(argv: List[str]) -> int:
         else:
             ui.result(out, human_fn=lambda d: _human_validate(d))
         return 2
+    # @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-if-registry-fail
 
     # @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-foreach-artifact
     for artifact_path, _template_path, artifact_type, traceability, kit_id in artifacts_to_validate:
@@ -257,6 +261,7 @@ def cmd_validate(argv: List[str]) -> int:
         all_warnings.extend(warnings)
     # @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-foreach-artifact
 
+    # @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-helpers
     def _attach_issue_to_artifact_report(issue: Dict[str, object], *, is_error: bool) -> None:
         ipath = str(issue.get("path", "") or "")
         rep = artifact_report_by_path.get(ipath)
@@ -272,6 +277,7 @@ def cmd_validate(argv: List[str]) -> int:
             rep["warning_count"] = int(rep.get("warning_count", 0) or 0) + 1
             if args.verbose and isinstance(rep.get("warnings"), list):
                 rep["warnings"].append(issue)
+    # @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-helpers
 
     # @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-if-structure-fail
     # Stop early: cross-artifact reference checks and code traceability checks are run only
@@ -578,10 +584,10 @@ def cmd_validate(argv: List[str]) -> int:
                 _attach_issue_to_artifact_report(err, is_error=True)
     # @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-if-code
 
+    # @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-enrich-errors
     # Resolve target artifact paths for cross-ref errors (before enrich_issues strips 'path')
     _enrich_target_artifact_paths(all_errors, meta=meta, project_root=project_root)
 
-    # @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-enrich-errors
     # Enrich errors/warnings with fixing prompts for LLM agents
     enrich_issues(all_errors, project_root=project_root)
     enrich_issues(all_warnings, project_root=project_root)
@@ -645,6 +651,7 @@ def cmd_validate(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-state-traceability-validation-report:p1:inst-fail
     # @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-return-report
 
+# @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-helpers
 def _enrich_target_artifact_paths(
     issues: List[Dict[str, object]],
     *,
@@ -760,11 +767,13 @@ def _suggest_path_from_autodetect(node: object, target_kind: str) -> Optional[st
         return suggested
 
     return None
+# @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-helpers
 
 # ---------------------------------------------------------------------------
 # Human-friendly formatter
 # ---------------------------------------------------------------------------
 
+# @cpt-begin:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-format
 def _human_validate(data: dict) -> None:
     status = data.get("status", "")
     n_art = data.get("artifacts_validated", data.get("artifact_count", 0))
@@ -891,3 +900,4 @@ def _format_issue(issue: object, *, is_error: bool) -> None:
 
     if has_extra:
         ui.blank()
+# @cpt-end:cpt-cypilot-flow-traceability-validation-validate:p1:inst-validate-format

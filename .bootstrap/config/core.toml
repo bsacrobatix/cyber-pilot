@@ -12,4 +12,4 @@ kit = "cypilot-sdlc"
 [kits.sdlc]
 format = "Cypilot"
 path = "config/kits/sdlc"
-version = "6"
+version = "1.0.0"

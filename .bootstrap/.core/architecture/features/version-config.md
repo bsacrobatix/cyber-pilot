@@ -35,7 +35,7 @@
 
 ### 1. Overview
 
-Enables project skill updates with config migration, and provides CLI commands for managing system definitions, ignore lists, and kit registrations. The update command refreshes `.core/` from cache, detects and auto-restructures old directory layouts, updates kits via file-level diff with interactive accept/decline/modify prompts, and ensures `config/` scaffold files exist without overwriting user content.
+Enables project skill updates with config migration, and provides CLI commands for managing system definitions, ignore lists, and kit registrations. The update command refreshes `.core/` from cache, detects and auto-restructures old directory layouts, migrates bundled kit references to GitHub sources (versions < 3.0.8), and ensures `config/` scaffold files exist without overwriting user content. Kit file updates are a separate operation via `cpt kit update`.
 
 ### 2. Purpose
 
@@ -58,14 +58,13 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 
 ### Update Project Installation
 
-- [ ] `p1` - **ID**: `cpt-cypilot-flow-version-config-update`
+- [x] `p1` - **ID**: `cpt-cypilot-flow-version-config-update`
 
 **Actor**: `cpt-cypilot-actor-user`
 
 **Success Scenarios**:
-- User runs `cpt update` → `.core/` refreshed from cache, old layout auto-restructured if detected, kits updated via file-level diff with interactive prompts, config scaffold ensured
-- Kit file unchanged between versions → skipped silently
-- Kit file changed → unified diff shown, user prompted to accept/decline/modify
+- User runs `cpt update` → `.core/` refreshed from cache, old layout auto-restructured if detected, bundled kit refs migrated to GitHub sources, config scaffold ensured
+- Bundled kit (no `source` field) → auto-migrated to GitHub source
 
 **Error Scenarios**:
 - Cypilot not initialized → error with hint to run `cpt init`
@@ -77,11 +76,15 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 3. [x] - `p1` - Replace `.core/` from cache (always force-overwrite) - `inst-replace-core`
 4. [x] - `p1` - Detect directory layout; if old layout detected, trigger automatic restructuring using `cpt-cypilot-algo-version-config-layout-restructure` - `inst-detect-layout`
 5. [x] - `p1` - Migrate `{cypilot_path}/config/core.toml` preserving all user settings - `inst-migrate-config`
-6. [ ] - `p1` - For each kit: update via file-level diff (unchanged files skipped, changed files prompt accept/decline/modify) - `inst-update-kits`
+6. [ ] - `p1` - Migrate bundled kit references to GitHub sources (add `source` field for kits without one) - `inst-migrate-kit-sources`
 7. [x] - `p1` - Ensure config scaffold files exist (create only if missing) - `inst-ensure-scaffold`
 8. [x] - `p1` - Regenerate agent entry points - `inst-regenerate-agents`
 9. [x] - `p1` - Run self-check to verify kit integrity (`run_self_check_from_meta`); include result in report, WARN if failed - `inst-self-check`
 10. [x] - `p1` - **RETURN** update report with actions taken and self-check result - `inst-return-report`
+11. [x] - `p1` - Imports, constants, and module setup for update command - `inst-update-imports`
+12. [x] - `p1` - Display core whatsnew entries (cache vs installed) before applying update - `inst-whatsnew`
+13. [x] - `p1` - Helper functions: ensure file creation, config README, auto-regenerate agents, read/show whatsnew - `inst-update-helpers`
+14. [x] - `p1` - Human-friendly formatter for update report output - `inst-update-format-output`
 
 ### Manage Config via CLI
 
@@ -108,7 +111,7 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 1. [x] - `p1` - Replace `.core/` from cache - `inst-replace-core-algo`
 2. [x] - `p1` - Detect and auto-restructure old directory layout - `inst-detect-layout-algo`
 3. [x] - `p1` - Migrate `{cypilot_path}/config/core.toml` - `inst-migrate-config-algo`
-4. [ ] - `p1` - For each kit: file-level diff, interactive accept/decline/modify per changed file - `inst-update-kits-algo`
+4. [ ] - `p1` - Migrate bundled kit references to GitHub sources (add `source` field) - `inst-migrate-kit-sources-algo`
 5. [ ] - `p1` - (Removed — no separate regen step; kit files are updated directly) - `inst-regen-algo`
 6. [x] - `p1` - Ensure config scaffold - `inst-scaffold-algo`
 
@@ -167,12 +170,11 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 
 - [x] - `p1` - `cpt update` replaces `.core/` from cache
 - [x] - `p1` - `cpt update` detects old directory layout and auto-restructures (move generated outputs from `.gen/kits/` to `config/kits/`, remove old reference copies)
-- [ ] - `p1` - `cpt update` updates kits via file-level diff: unchanged files skipped, changed files prompt accept/decline/modify
-- [ ] - `p1` - Interactive diff uses git-style unified format with `[a]ccept / [d]ecline / [A]ccept all / [D]ecline all / [m]odify`
-- [x] - `p1` - User config files in `config/` are NEVER overwritten (except through interactive diff acceptance)
+- [x] - `p1` - `cpt update` migrates bundled kit references to GitHub sources (versions < 3.0.8)
+- [x] - `p1` - User config files in `config/` are NEVER overwritten
 - [x] - `p1` - [LEGACY] Blueprint version comparison detects same, migration needed, and missing states
 - [x] - `p1` - `--dry-run` shows what would be done without writing
-- [ ] - `p1` - `cpt update` regenerates `.gen/AGENTS.md` and `.gen/SKILL.md` from all installed kits after kit updates
+- [x] - `p1` - `cpt update` regenerates `.gen/AGENTS.md` and `.gen/SKILL.md` after update
 - [x] - `p1` - `cpt update` automatically runs self-check after completion and includes result in report
 
 ### Config CLI Commands
@@ -199,10 +201,9 @@ Ensures teams can upgrade Cypilot without losing configuration or customizations
 
 ## 7. Acceptance Criteria
 
-- [x] `cpt update` refreshes `.core/` without touching user config (unless interactive diff accepted)
+- [x] `cpt update` refreshes `.core/` without touching user config
 - [x] `cpt update` detects and auto-restructures old directory layout with backup and rollback
-- [ ] `cpt update` updates kits via file-level diff with accept/decline/accept all/decline all/modify prompts
-- [ ] Unchanged kit files are skipped silently; changed files show unified diff
+- [x] `cpt update` migrates bundled kit references to GitHub sources (versions < 3.0.8)
 - [x] [LEGACY] Blueprint version comparison correctly identifies same, migration needed, and missing states
 - [ ] `cpt config show` displays readable config summary
 - [ ] Config migration preserves all user settings with backup

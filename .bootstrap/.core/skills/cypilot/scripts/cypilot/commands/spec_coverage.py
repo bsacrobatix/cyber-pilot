@@ -6,6 +6,7 @@
 @cpt-state:cpt-cypilot-state-spec-coverage-report:p1
 @cpt-dod:cpt-cypilot-dod-spec-coverage-report:p1
 """
+# @cpt-begin:cpt-cypilot-flow-spec-coverage-report:p1:inst-coverage-imports
 import argparse
 import json
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import List
 
 from ..utils.coverage import FileCoverage, calculate_metrics, generate_report, scan_file_coverage
 from ..utils.ui import ui
+# @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-coverage-imports
 
 def cmd_spec_coverage(argv: List[str]) -> int:
     """Run spec coverage analysis on registered codebase files."""
@@ -92,6 +94,7 @@ def cmd_spec_coverage(argv: List[str]) -> int:
         filtered_files.append(fp)
     # @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-resolve-code-files
 
+    # @cpt-begin:cpt-cypilot-flow-spec-coverage-report:p1:inst-coverage-helpers
     if not filtered_files:
         out = {
             "status": "PASS",
@@ -105,6 +108,7 @@ def cmd_spec_coverage(argv: List[str]) -> int:
         }
         _output(out, args)
         return 0
+    # @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-coverage-helpers
 
     # @cpt-begin:cpt-cypilot-flow-spec-coverage-report:p1:inst-foreach-file
     file_coverages: List[FileCoverage] = []
@@ -175,6 +179,7 @@ def cmd_spec_coverage(argv: List[str]) -> int:
     return 0 if status == "PASS" else 2
     # @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-return-report
 
+# @cpt-begin:cpt-cypilot-flow-spec-coverage-report:p1:inst-coverage-helpers
 def _rel_path(p: str, project_root: Path) -> str:
     """Return path relative to project_root, or original if not possible."""
     try:
@@ -244,3 +249,4 @@ def _human_spec_coverage(data: dict) -> None:
     else:
         ui.info(f"Status: {status}")
     ui.blank()
+# @cpt-end:cpt-cypilot-flow-spec-coverage-report:p1:inst-coverage-helpers

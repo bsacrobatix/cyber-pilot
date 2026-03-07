@@ -10,6 +10,7 @@ Marker types supported:
 Key difference from artifacts: code can only REFERENCE IDs (not define them).
 IDs in code that don't exist in artifacts = validation FAIL.
 """
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-code-datamodel
 from __future__ import annotations
 
 import re
@@ -100,6 +101,7 @@ class CodeFile:
         if errs:
             return None, errs
         return cf, []
+    # @cpt-end:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-code-datamodel
 
     def load(self) -> List[Dict[str, object]]:
         """Load and parse the code file."""
@@ -240,6 +242,7 @@ class CodeFile:
             ))
         # @cpt-end:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-if-unclosed
 
+    # @cpt-begin:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-code-query-validate
     def list_ids(self) -> List[str]:
         """List all unique Cypilot IDs referenced in this code file."""
         ids: Set[str] = set()
@@ -301,6 +304,7 @@ class CodeFile:
                 seen_scopes[key] = scope.line
 
         return {"errors": errors, "warnings": warnings}
+    # @cpt-end:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-code-query-validate
 
 # @cpt-algo:cpt-cypilot-algo-traceability-validation-cross-validate-code:p1
 def cross_validate_code(
@@ -466,6 +470,7 @@ def cross_validate_code(
     return {"errors": errors, "warnings": warnings}
     # @cpt-end:cpt-cypilot-algo-traceability-validation-cross-validate-code:p1:inst-return-code-cross
 
+# @cpt-begin:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-code-wrappers
 def load_code_file(code_path: Path) -> Tuple[Optional[CodeFile], List[Dict[str, object]]]:
     """Convenience wrapper returning (CodeFile|None, errors)."""
     return CodeFile.from_path(code_path)
@@ -486,3 +491,4 @@ __all__ = [
     "validate_code_file",
     "cross_validate_code",
 ]
+# @cpt-end:cpt-cypilot-algo-traceability-validation-scan-code:p1:inst-code-wrappers

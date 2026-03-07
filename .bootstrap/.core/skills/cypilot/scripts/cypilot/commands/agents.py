@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from ..utils.files import core_subpath, config_subpath, find_project_root, _is_cypilot_root, _read_cypilot_var, load_project_config
 from ..utils.ui import ui
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-path-helpers
 def _safe_relpath(path: Path, base: Path) -> str:
     try:
         return path.relative_to(base).as_posix()
@@ -57,7 +58,9 @@ def _target_path_from_root(target: Path, project_root: Path, cypilot_root: Optio
             "agent proxy will contain an absolute path\n"
         )
         return target.as_posix()
+# @cpt-end:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-path-helpers
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-ensure-local-copy
 # Directories and files to copy when cypilot is external to the project.
 _COPY_DIRS = ["workflows", "requirements", "schemas", "templates", "prompts", "kits", "architecture", "skills"]
 _COPY_ROOT_DIRS: list[str] = []
@@ -132,6 +135,7 @@ def _ensure_cypilot_local(
         return local_dot, {"action": "copied", "file_count": file_count}
     except Exception as exc:
         return cypilot_root, {"action": "error", "message": str(exc)}
+# @cpt-end:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-ensure-local-copy
 
 def _load_json_file(path: Path) -> Optional[dict]:
     if not path.is_file():
@@ -373,6 +377,7 @@ def _default_agents_config() -> dict:
     }
 # @cpt-end:cpt-cypilot-algo-agent-integration-discover-agents:p1:inst-define-registry
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-parse-frontmatter
 def _parse_frontmatter(file_path: Path) -> Dict[str, str]:
     """Parse YAML frontmatter from markdown file. Returns dict with name, description, etc."""
     result: Dict[str, str] = {}
@@ -466,7 +471,9 @@ def _render_template(lines: List[str], variables: Dict[str, str]) -> str:
             raise SystemExit(f"Missing template variable: {e}")
     rendered = "\n".join(out).rstrip() + "\n"
     return _ensure_frontmatter_description_quoted(rendered)
+# @cpt-end:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-parse-frontmatter
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-discover-agents:p1:inst-resolve-kits
 def _resolve_config_kits(cypilot_root: Path, project_root: Optional[Path] = None) -> Path:
     """Resolve config/kits/ directory, with fallback to adapter dir for source repos.
 
@@ -501,6 +508,7 @@ def _registered_kit_dirs(project_root: Optional[Path]) -> Optional[Set[str]]:
             if path:
                 dirs.add(Path(path).name)
     return dirs if dirs else None
+# @cpt-end:cpt-cypilot-algo-agent-integration-discover-agents:p1:inst-resolve-kits
 
 # @cpt-begin:cpt-cypilot-algo-agent-integration-list-workflows:p1:inst-scan-core-workflows
 def _list_workflow_files(cypilot_root: Path, project_root: Optional[Path] = None) -> List[Tuple[str, Path]]:
@@ -892,6 +900,7 @@ def _process_single_agent(
     }
 # @cpt-end:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-create-proxy
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-discover-agents:p1:inst-resolve-context
 def _resolve_agents_context(argv: List[str], prog: str, description: str, *, allow_yes: bool = False) -> Optional[tuple]:
     """Shared argument parsing and project resolution for agents commands.
 
@@ -976,7 +985,9 @@ def _resolve_agents_context(argv: List[str], prog: str, description: str, *, all
             cfg = {"version": 1, "agents": {a: {"workflows": {}, "skills": {}} for a in agents_to_process}}
 
     return args, agents_to_process, project_root, cypilot_root, copy_report, cfg_path, cfg
+# @cpt-end:cpt-cypilot-algo-agent-integration-discover-agents:p1:inst-resolve-context
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-cmd-agents-list
 def cmd_agents(argv: List[str]) -> int:
     """Read-only command: list generated agent integration files."""
     ctx = _resolve_agents_context(argv, prog="agents", description="Show generated agent integration files")
@@ -1001,6 +1012,7 @@ def cmd_agents(argv: List[str]) -> int:
         human_fn=lambda d: _human_agents_list(d, agents_to_process, results, project_root),
     )
     return 0
+# @cpt-end:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-cmd-agents-list
 
 def cmd_generate_agents(argv: List[str]) -> int:
     """Generate/update agent-specific workflow proxies and skill outputs."""
@@ -1082,6 +1094,7 @@ def cmd_generate_agents(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-flow-agent-integration-generate:p1:inst-return-report
     return 0 if not has_errors else 1
 
+# @cpt-begin:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-format-output
 def _build_result(
     results: Dict[str, Any],
     agents_to_process: List[str],
@@ -1238,3 +1251,4 @@ def _human_generate_agents_ok(
     else:
         ui.warn("Agent setup finished with some errors (see above).")
     ui.blank()
+# @cpt-end:cpt-cypilot-algo-agent-integration-generate-shims:p1:inst-format-output

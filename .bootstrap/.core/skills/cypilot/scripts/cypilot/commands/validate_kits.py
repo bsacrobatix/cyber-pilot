@@ -6,6 +6,7 @@ conf.toml readability, constraints.toml schema, and template/example
 consistency against constraints.
 """
 
+# @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-imports
 import argparse
 import json
 from pathlib import Path
@@ -13,8 +14,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils.constraints import error as constraints_error
 from ..utils.ui import ui
+# @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-imports
 
 
+# @cpt-dod:cpt-cypilot-dod-kit-validate:p1
+# @cpt-algo:cpt-cypilot-algo-kit-validate:p1
 def run_validate_kits(
     *,
     project_root: Path,
@@ -27,6 +31,7 @@ def run_validate_kits(
     Returns (return_code, report_dict).  rc=0 means PASS, rc=2 means FAIL.
     This is the reusable engine called by both the CLI and ``cmd_update``.
     """
+    # @cpt-begin:cpt-cypilot-algo-kit-validate:p1:inst-init-context
     from ..utils.context import get_context
     from ..utils.constraints import load_constraints_toml
     from ..utils.artifacts_meta import load_artifacts_meta
@@ -34,7 +39,9 @@ def run_validate_kits(
     ctx = get_context()
     if not ctx:
         return 1, {"status": "ERROR", "message": "Cypilot not initialized. Run 'cypilot init' first."}
+    # @cpt-end:cpt-cypilot-algo-kit-validate:p1:inst-init-context
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate:p1:inst-structural-check
     # ── Phase 1: Structural validation ────────────────────────────────
     kit_reports: List[Dict[str, object]] = []
     all_errors: List[Dict[str, object]] = []
@@ -67,10 +74,14 @@ def run_validate_kits(
                 rep["kinds"] = sorted(_kc.by_kind.keys())
 
         kit_reports.append(rep)
+    # @cpt-end:cpt-cypilot-algo-kit-validate:p1:inst-structural-check
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate:p1:inst-template-check
     # ── Phase 2: Template & example validation ────────────────────────
+    # @cpt-begin:cpt-cypilot-flow-developer-experience-self-check:p1:inst-load-registry
     self_check_report: Dict[str, object] = {}
     artifacts_meta, meta_err = load_artifacts_meta(adapter_dir)
+    # @cpt-end:cpt-cypilot-flow-developer-experience-self-check:p1:inst-load-registry
     if artifacts_meta is not None and not meta_err:
         from .self_check import run_self_check_from_meta
         _, sc_out = run_self_check_from_meta(
@@ -86,7 +97,9 @@ def run_validate_kits(
             if r.get("status") == "FAIL":
                 sc_errs = r.get("errors", [])
                 all_errors.extend(sc_errs)
+    # @cpt-end:cpt-cypilot-algo-kit-validate:p1:inst-template-check
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate:p1:inst-build-result
     # ── Build result ──────────────────────────────────────────────────
     overall_status = "PASS" if not all_errors else "FAIL"
     result: Dict[str, Any] = {
@@ -113,21 +126,28 @@ def run_validate_kits(
                 result["errors_truncated"] = len(all_errors) - 10
 
     return (0 if overall_status == "PASS" else 2), result
+    # @cpt-end:cpt-cypilot-algo-kit-validate:p1:inst-build-result
 
 
+# @cpt-flow:cpt-cypilot-flow-kit-validate-cli:p1
 def cmd_validate_kits(argv: List[str]) -> int:
     """Validate Cypilot kit packages (CLI entry point)."""
+    # @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-parse-args
     p = argparse.ArgumentParser(prog="validate-kits", description="Validate kit structure, templates, and examples")
     p.add_argument("path", nargs="?", default=None, help="Path to a kit directory to validate (e.g. kits/sdlc). If omitted, validates registered kits.")
     p.add_argument("--kit", "--rule", dest="kit", default=None, help="Kit ID to validate (if omitted, validates all kits)")
     p.add_argument("--verbose", action="store_true", help="Print full validation report")
     args = p.parse_args(argv)
+    # @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-parse-args
 
+    # @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-path-mode
     if args.path:
         rc, result = _validate_kit_by_path(Path(args.path), verbose=bool(args.verbose))
         ui.result(result, human_fn=lambda d: _human_validate_kits(d))
         return rc
+    # @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-path-mode
 
+    # @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-registered-mode
     from ..utils.context import get_context
     ctx = get_context()
     if not ctx:
@@ -140,13 +160,18 @@ def cmd_validate_kits(argv: List[str]) -> int:
         kit_filter=str(args.kit) if args.kit else None,
         verbose=bool(args.verbose),
     )
+    # @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-registered-mode
 
+    # @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-output-result
     ui.result(result, human_fn=lambda d: _human_validate_kits(d))
     return rc
+    # @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-output-result
 
 
+# @cpt-algo:cpt-cypilot-algo-kit-validate-by-path:p1
 def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int, Dict[str, Any]]:
     """Validate a standalone kit directory (not necessarily registered in config)."""
+    # @cpt-begin:cpt-cypilot-algo-kit-validate-by-path:p1:inst-resolve-dir
     from ..utils.constraints import load_constraints_toml
     from ..utils.artifacts_meta import ArtifactsMeta
 
@@ -156,7 +181,9 @@ def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int
 
     # Derive slug from directory name
     slug = kit_dir.name
+    # @cpt-end:cpt-cypilot-algo-kit-validate-by-path:p1:inst-resolve-dir
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate-by-path:p1:inst-structural-check
     # ── Phase 1: Structural — constraints.toml ────────────────────────
     all_errors: List[Dict[str, object]] = []
     _kc, kc_errs = load_constraints_toml(kit_dir)
@@ -175,7 +202,9 @@ def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int
     else:
         if verbose and _kc is not None and getattr(_kc, "by_kind", None):
             kit_report["kinds"] = sorted(_kc.by_kind.keys())
+    # @cpt-end:cpt-cypilot-algo-kit-validate-by-path:p1:inst-structural-check
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate-by-path:p1:inst-build-artifacts-meta
     # ── Phase 2: Template & example validation ────────────────────────
     # Build a synthetic ArtifactsMeta so run_self_check_from_meta can work
     artifacts_dict: Dict[str, Dict[str, str]] = {}
@@ -198,7 +227,9 @@ def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int
         "project_root": str(kit_dir.parent),
         "kits": {slug: {"format": "Cypilot", "path": str(kit_dir), "artifacts": artifacts_dict}},
     })
+    # @cpt-end:cpt-cypilot-algo-kit-validate-by-path:p1:inst-build-artifacts-meta
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate-by-path:p1:inst-template-check
     self_check_report: Dict[str, object] = {}
     if not kc_errs:  # Only run template checks if constraints parsed OK
         from .self_check import run_self_check_from_meta
@@ -213,7 +244,9 @@ def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int
         for r in sc_out.get("results", []):
             if r.get("status") == "FAIL":
                 all_errors.extend(r.get("errors", []))
+    # @cpt-end:cpt-cypilot-algo-kit-validate-by-path:p1:inst-template-check
 
+    # @cpt-begin:cpt-cypilot-algo-kit-validate-by-path:p1:inst-build-result
     # ── Build result ──────────────────────────────────────────────────
     overall_status = "PASS" if not all_errors else "FAIL"
     result: Dict[str, Any] = {
@@ -235,7 +268,9 @@ def _validate_kit_by_path(kit_path: Path, *, verbose: bool = False) -> Tuple[int
                 result["errors_truncated"] = len(all_errors) - 10
 
     return (0 if overall_status == "PASS" else 2), result
+    # @cpt-end:cpt-cypilot-algo-kit-validate-by-path:p1:inst-build-result
 
+# @cpt-begin:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-format
 def _show_error(e: object, *, prefix: str = "\u2717") -> None:
     """Display a single error/warning dict with nested details."""
     if not isinstance(e, dict):
@@ -332,3 +367,4 @@ def _human_validate_kits(data: dict) -> None:
     else:
         ui.error(f"{n} kit(s) validated, {n_err} error(s).")
     ui.blank()
+# @cpt-end:cpt-cypilot-flow-kit-validate-cli:p1:inst-validate-kits-format

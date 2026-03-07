@@ -9,12 +9,12 @@
   - [2.1 Core Infrastructure ⏳ HIGH](#21-core-infrastructure-high)
   - [2.2 Kit Management ⏳ HIGH](#22-kit-management-high)
   - [2.3 Traceability & Validation ⏳ HIGH](#23-traceability-validation-high)
-  - [2.4 SDLC Kit & Artifact Pipeline ⏳ HIGH](#24-sdlc-kit-artifact-pipeline-high)
+  - [2.4 SDLC Kit & Artifact Pipeline (EXTRACTED) ⏳ HIGH](#24-sdlc-kit-artifact-pipeline-extracted-high)
   - [2.5 Agent Integration & Workflows ✅ DONE](#25-agent-integration-workflows-done)
-  - [2.6 PR Workflows ⏳ MEDIUM](#26-pr-workflows-medium)
+  - [2.6 PR Workflows (EXTRACTED) ⏳ MEDIUM](#26-pr-workflows-extracted-medium)
   - [2.7 Version & Config Management ⏳ MEDIUM](#27-version-config-management-medium)
   - [2.8 Developer Experience ⏳ LOW](#28-developer-experience-low)
-  - [2.9 Advanced SDLC Workflows ⏳ LOW](#29-advanced-sdlc-workflows-low)
+  - [2.9 Advanced SDLC Workflows (EXTRACTED) ⏳ LOW](#29-advanced-sdlc-workflows-extracted-low)
   - [2.10 V2 → V3 Migration ⏳ HIGH](#210-v2-v3-migration-high)
   - [2.11 Spec Coverage ⏳ HIGH](#211-spec-coverage-high)
 - [3. Feature Dependencies](#3-feature-dependencies)
@@ -23,13 +23,13 @@
 
 ## 1. Overview
 
-Cypilot DESIGN is decomposed into 10 features organized around architectural layers and functional cohesion. The decomposition follows a dependency order where core infrastructure enables the kit system and validation, which in turn enable the SDLC kit, agent integration, and advanced workflows.
+Cypilot DESIGN is decomposed into features organized around architectural layers and functional cohesion. The decomposition follows a dependency order where core infrastructure enables the kit system and validation, which in turn enable agent integration and advanced workflows.
 
 **Decomposition Strategy**:
 - Features grouped by architectural layer and functional cohesion (related components together)
 - Dependencies minimize coupling between features — each feature is independently implementable given its dependencies
-- p1 features (F1–F6, F10) cover all p1 functional requirements; p2 features (F7–F9) cover p2/p3 FRs
-- 100% coverage of all DESIGN elements verified: 9 components, 6 sequences, 29 FRs, 4 NFRs, 12 principles, 4 constraints
+- SDLC-specific features (F4, F6, F9) have been **extracted** to the SDLC kit repository (`cyberfabric/cyber-pilot-kit-sdlc`) per `cpt-cypilot-adr-extract-sdlc-kit`
+- Core features (F1–F3, F5, F7–F8, F10–F11) cover all core functional requirements
 
 
 ## 2. Entries
@@ -103,7 +103,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
   - `{cypilot_path}/config/artifacts.toml` — artifact registry with autodetect rules
 
 
-### 2.2 Kit Management ⏳ HIGH
+### 2.2 [Kit Management](features/kit-management.md) ⏳ HIGH
 
 - [x] `p1` - **ID**: `cpt-cypilot-feature-blueprint-system`
 
@@ -192,8 +192,6 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 
   - `p1` - `cpt-cypilot-fr-core-traceability`
   - `p1` - `cpt-cypilot-fr-core-cdsl`
-  - `p1` - `cpt-cypilot-fr-sdlc-validation`
-  - `p1` - `cpt-cypilot-fr-sdlc-cross-artifact`
   - `p1` - `cpt-cypilot-nfr-validation-performance`
   - `p1` - `cpt-cypilot-nfr-security-integrity`
 
@@ -234,57 +232,9 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
   - In-memory ID index (definitions + references, built from filesystem scan)
 
 
-### 2.4 [SDLC Kit & Artifact Pipeline](features/sdlc-kit.md) ⏳ HIGH
+### 2.4 SDLC Kit & Artifact Pipeline (EXTRACTED) ⏳ HIGH
 
-- [x] `p1` - **ID**: `cpt-cypilot-feature-sdlc-kit`
-
-- **Purpose**: Provide the primary domain kit — SDLC file package for PRD, DESIGN, ADR, DECOMPOSITION, and FEATURE — enabling the artifact-first development pipeline.
-
-- **Depends On**: `cpt-cypilot-feature-core-infra`, `cpt-cypilot-feature-traceability-validation`
-
-- **Scope**:
-  - Per-artifact files: `rules.md`, `template.md`, `checklist.md`, `examples/example.md` for each artifact kind
-  - Kit-wide files: `constraints.toml`, `conf.toml`, `SKILL.md`, `codebase/rules.md`, `codebase/checklist.md`, `workflows/*.md`
-  - Artifact-first pipeline: PRD → DESIGN → ADR → DECOMPOSITION → FEATURE → CODE
-  - Each artifact kind usable independently (no forced sequence)
-
-- **Out of scope**:
-  - Custom marker registration (planned p2)
-  - Code generation from design (Feature 9)
-  - PR review/status (Feature 6)
-
-- **Requirements Covered**:
-
-  - `p1` - `cpt-cypilot-fr-sdlc-pipeline`
-  - `p2` - `cpt-cypilot-fr-sdlc-plugin`
-
-- **Design Principles Covered**:
-
-  - `p1` - `cpt-cypilot-principle-kit-centric`
-  - `p1` - `cpt-cypilot-principle-dry`
-
-- **Design Constraints Covered**:
-
-  - `p1` - `cpt-cypilot-constraint-markdown-contract`
-
-- **Domain Model Entities**:
-  - Artifact
-  - Kit
-
-- **Design Components**:
-
-  - `p1` - `cpt-cypilot-component-sdlc-plugin`
-
-- **API**:
-  - `cpt self-check`
-
-- **Sequences**:
-
-  None (SDLC kit provides files; installation/update handled by Feature 2)
-
-- **Data**:
-  - `kits/sdlc/` — source kit files (canonical, in repo root)
-  - `{cypilot_path}/config/kits/sdlc/` — installed kit files (user-editable)
+> **EXTRACTED per `cpt-cypilot-adr-extract-sdlc-kit`**: This feature has been moved to the SDLC kit repository (`cyberfabric/cyber-pilot-kit-sdlc`). All SDLC-specific scope, requirements, components, and data are now owned by the kit's own repository.
 
 
 ### 2.5 [Agent Integration & Workflows](features/agent-integration.md) ✅ DONE
@@ -338,58 +288,9 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
   - `.windsurf/workflows/`, `.cursor/rules/`, `.claude/commands/`, `.github/prompts/`
 
 
-### 2.6 [PR Workflows](features/pr-workflows.md) ⏳ MEDIUM
+### 2.6 PR Workflows (EXTRACTED) ⏳ MEDIUM
 
-- [ ] `p1` - **ID**: `cpt-cypilot-feature-pr-workflows`
-
-- **Purpose**: Enable structured GitHub PR review and status assessment via gh CLI with configurable prompts and checklists.
-
-- **Depends On**: `cpt-cypilot-feature-sdlc-kit`, `cpt-cypilot-feature-agent-integration`
-
-- **Scope**:
-  - PR review: fetch PR data (diffs, metadata, comments) via `gh` CLI, analyze against prompts and checklists, produce structured review report
-  - PR status: fetch comments, CI status, merge conflict state, classify unreplied comments by severity, output JSON report
-  - Read-only: no local working tree modifications, always re-fetches data
-  - Graceful degradation: actionable error if `gh` not available or not authenticated
-
-- **Out of scope**:
-  - PR config management CLI (Feature 9)
-  - Writing PR comments or approvals (read-only analysis)
-
-- **Requirements Covered**:
-
-  - `p1` - `cpt-cypilot-fr-sdlc-pr-review`
-  - `p1` - `cpt-cypilot-fr-sdlc-pr-status`
-
-- **Design Principles Covered**:
-
-  - `p1` - `cpt-cypilot-principle-determinism-first`
-  - `p1` - `cpt-cypilot-principle-ci-automation-first`
-
-- **Design Constraints Covered**:
-
-  None
-
-- **Domain Model Entities**:
-  - Artifact (PR as analysis target)
-
-- **Design Components**:
-
-  None (PR workflows are agent-driven, using `gh` CLI subprocess)
-
-- **API**:
-  - `cpt sdlc pr-review <number>`
-  - `cpt sdlc pr-status <number>`
-
-- **Sequences**:
-  - `cpt-cypilot-seq-pr-review`
-
-- **Data**:
-  - `{cypilot_path}/config/kits/sdlc/` — PR review prompts, checklists, exclude lists
-
-- **External Dependencies**:
-
-  - `p2` - `cpt-cypilot-interface-github-gh-cli`
+> **EXTRACTED per `cpt-cypilot-adr-extract-sdlc-kit`**: This feature has been moved to the SDLC kit repository (`cyberfabric/cyber-pilot-kit-sdlc`). PR review and status workflows are now provided by the SDLC kit as kit workflows.
 
 
 ### 2.7 [Version & Config Management](features/version-config.md) ⏳ MEDIUM
@@ -401,7 +302,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 - **Depends On**: `cpt-cypilot-feature-core-infra`
 
 - **Scope**:
-  - Update command: copy cached skill to project, detect and auto-restructure old directory layout, migrate `{cypilot_path}/config/core.toml`, update kits via file-level diff with interactive prompts, regenerate agent entry points, run automatic self-check to verify kit integrity
+  - Update command: copy cached skill to project, detect and auto-restructure old directory layout, migrate `{cypilot_path}/config/core.toml`, migrate bundled kit references to GitHub sources (versions < 3.0.8), regenerate agent entry points
   - Layout restructuring: automatically detect old directory layout during `cpt update` and restructure (move generated outputs from `.gen/kits/` to `config/kits/`, remove old reference copies)
   - Config migration: backup before applying, preserve all user settings across versions
   - CLI config interface: `config system add/remove`, dry-run mode
@@ -508,61 +409,9 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
   None
 
 
-### 2.9 [Advanced SDLC Workflows](features/advanced-sdlc.md) ⏳ LOW
+### 2.9 Advanced SDLC Workflows (EXTRACTED) ⏳ LOW
 
-- [ ] `p2` - **ID**: `cpt-cypilot-feature-advanced-sdlc`
-
-- **Purpose**: Enable code generation from design artifacts, brownfield project support, feature lifecycle tracking, PR configuration management, and quickstart guides.
-
-- **Depends On**: `cpt-cypilot-feature-sdlc-kit`, `cpt-cypilot-feature-pr-workflows`
-
-- **Scope**:
-  - Code generation: agent-driven workflow loading FEATURE artifacts + project system prompts, producing code with `@cpt-*` traceability tags validated by Traceability Engine
-  - Brownfield support: detect existing code during `init`, reverse-engineering mode for agents, incremental adoption
-  - Feature lifecycle: status tracking (NOT_STARTED → IN_DESIGN → DESIGNED → READY → IN_PROGRESS → DONE) via checkbox state, transition rules, dependency blocking
-  - PR config management: prompt selection, checklist mapping, domain-specific review criteria, exclude lists
-  - Quickstart guides: progressive disclosure — human-facing overview docs, AI-facing navigation rules
-
-- **Out of scope**:
-  - Core pipeline definition (Feature 4)
-  - PR review execution (Feature 6)
-
-- **Requirements Covered**:
-
-  - `p2` - `cpt-cypilot-fr-sdlc-code-gen`
-  - `p2` - `cpt-cypilot-fr-sdlc-brownfield`
-  - `p2` - `cpt-cypilot-fr-sdlc-lifecycle`
-  - `p2` - `cpt-cypilot-fr-sdlc-pr-config`
-  - `p2` - `cpt-cypilot-fr-sdlc-guides`
-
-- **Design Principles Covered**:
-
-  - `p1` - `cpt-cypilot-principle-traceability-by-design`
-  - `p2` - `cpt-cypilot-principle-skill-documented`
-
-- **Design Constraints Covered**:
-
-  None
-
-- **Domain Model Entities**:
-  - Artifact
-  - Identifier
-
-- **Design Components**:
-
-  Components reused from Feature 4 (`sdlc-plugin`) and Feature 3 (`traceability-engine`)
-
-- **API**:
-  - `cpt sdlc autodetect show --system S`
-  - `cpt sdlc autodetect add-artifact`
-  - `cpt sdlc autodetect add-codebase`
-
-- **Sequences**:
-
-  None (workflows are agent-driven)
-
-- **Data**:
-  - `{cypilot_path}/config/kits/sdlc/` — PR config, autodetect rules
+> **EXTRACTED per `cpt-cypilot-adr-extract-sdlc-kit`**: This feature has been moved to the SDLC kit repository (`cyberfabric/cyber-pilot-kit-sdlc`). Code generation, brownfield support, feature lifecycle, PR config, and quickstart guides are now provided by the SDLC kit.
 
 
 ### 2.10 [V2 → V3 Migration](features/v2-v3-migration.md) ⏳ HIGH
@@ -692,11 +541,7 @@ Cypilot DESIGN is decomposed into 10 features organized around architectural lay
 ```text
 cpt-cypilot-feature-core-infra
     ↓
-    ├─→ cpt-cypilot-feature-sdlc-kit ←── cpt-cypilot-feature-traceability-validation
-    │    ↓
-    │    └─→ cpt-cypilot-feature-pr-workflows ←── cpt-cypilot-feature-agent-integration
-    │         ↓
-    │         └─→ cpt-cypilot-feature-advanced-sdlc
+    ├─→ cpt-cypilot-feature-blueprint-system (Kit Management)
     │
     ├─→ cpt-cypilot-feature-agent-integration
     │
@@ -709,16 +554,18 @@ cpt-cypilot-feature-core-infra
     │    └─→ cpt-cypilot-feature-spec-coverage
     │
     └─→ cpt-cypilot-feature-v2-v3-migration ←── cpt-cypilot-feature-traceability-validation
+
+    (EXTRACTED to cyberfabric/cyber-pilot-kit-sdlc:)
+    cpt-cypilot-feature-sdlc-kit
+    cpt-cypilot-feature-pr-workflows
+    cpt-cypilot-feature-advanced-sdlc
 ```
 
 **Dependency Rationale**:
 
 - `cpt-cypilot-feature-traceability-validation` requires `cpt-cypilot-feature-core-infra`: validator needs config manager for system/artifact resolution
-- `cpt-cypilot-feature-sdlc-kit` requires `cpt-cypilot-feature-core-infra` and `cpt-cypilot-feature-traceability-validation`: SDLC kit files need config infrastructure, constraints need the validator for enforcement
 - `cpt-cypilot-feature-agent-integration` requires `cpt-cypilot-feature-core-infra`: agent generator consumes kit SKILL.md and workflow files
-- `cpt-cypilot-feature-pr-workflows` requires `cpt-cypilot-feature-sdlc-kit` and `cpt-cypilot-feature-agent-integration`: PR workflows use SDLC kit's prompts/checklists and are exposed via agent entry points
-- `cpt-cypilot-feature-version-config` requires `cpt-cypilot-feature-core-infra`: update command needs config migration and kit file-level diff updates
+- `cpt-cypilot-feature-version-config` requires `cpt-cypilot-feature-core-infra`: update command needs config migration
 - `cpt-cypilot-feature-developer-experience` requires `cpt-cypilot-feature-traceability-validation`: VS Code plugin and doctor delegate to validator and traceability engine
-- `cpt-cypilot-feature-advanced-sdlc` requires `cpt-cypilot-feature-sdlc-kit` and `cpt-cypilot-feature-pr-workflows`: code generation uses SDLC kit artifacts, PR config extends PR review
 - `cpt-cypilot-feature-v2-v3-migration` requires `cpt-cypilot-feature-core-infra` and `cpt-cypilot-feature-traceability-validation`: migration needs v3 infrastructure and validation to verify completeness
-- `cpt-cypilot-feature-agent-integration` and `cpt-cypilot-feature-sdlc-kit` are independent of each other and can be developed in parallel
+- SDLC-specific features (F4, F6, F9) have been extracted to `cyberfabric/cyber-pilot-kit-sdlc` per `cpt-cypilot-adr-extract-sdlc-kit`

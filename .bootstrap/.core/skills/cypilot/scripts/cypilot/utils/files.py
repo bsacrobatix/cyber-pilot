@@ -8,6 +8,7 @@ File I/O, project root discovery, cypilot detection, path resolution.
 @cpt-dod:cpt-cypilot-dod-core-infra-init-config:p1
 """
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-project-root-detection:p1:inst-root-datamodel
 import json
 import re
 from pathlib import Path
@@ -51,6 +52,7 @@ def cfg_get_str(cfg: object, *keys: str) -> Optional[str]:
         if isinstance(v, str) and v.strip():
             return v.strip()
     return None
+# @cpt-end:cpt-cypilot-algo-core-infra-project-root-detection:p1:inst-root-datamodel
 
 # @cpt-begin:cpt-cypilot-algo-core-infra-project-root-detection:p1:inst-root-walk-up
 def find_project_root(start: Path) -> Optional[Path]:
@@ -123,6 +125,7 @@ def load_project_config(project_root: Path) -> Optional[dict]:
         return None
 # @cpt-end:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-load-core
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-helpers
 def cypilot_root_from_project_config() -> Optional[Path]:
     """Get Cypilot core path from config core.toml [paths] section."""
     project_root = find_project_root(Path.cwd())
@@ -143,6 +146,7 @@ def cypilot_root_from_project_config() -> Optional[Path]:
     if _is_cypilot_root(core):
         return core
     return None
+# @cpt-end:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-helpers
 
 # @cpt-begin:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-find-dir
 def find_cypilot_directory(start: Path, cypilot_root: Optional[Path] = None) -> Optional[Path]:
@@ -325,6 +329,7 @@ def load_artifacts_registry(adapter_dir: Path) -> Tuple[Optional[dict], Optional
     return cfg, None
 # @cpt-end:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-load-registry
 
+# @cpt-begin:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-helpers
 def iter_registry_entries(registry: dict) -> List[dict]:
     items = registry.get("artifacts")
     if not isinstance(items, list):
@@ -387,3 +392,4 @@ def load_text(path: Path) -> Tuple[str, Optional[str]]:
         return path.read_text(encoding="utf-8"), None
     except Exception as e:
         return "", f"Failed to read {path}: {e}"
+# @cpt-end:cpt-cypilot-algo-core-infra-config-management:p1:inst-cfg-helpers

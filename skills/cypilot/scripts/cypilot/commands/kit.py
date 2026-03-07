@@ -6,12 +6,141 @@ Kits are direct file packages — no blueprint processing or generation.
 """
 
 import argparse
+import json
 import shutil
 import sys
+import tarfile
+import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils.ui import ui
+
+
+# ---------------------------------------------------------------------------
+# GitHub source helpers
+# ---------------------------------------------------------------------------
+
+def _parse_github_source(source: str) -> Tuple[str, str, str]:
+    """Parse 'owner/repo[@version]' into (owner, repo, version).
+
+    Returns (owner, repo, version) where version may be empty.
+    Raises ValueError if format is invalid.
+    """
+    version = ""
+    if "@" in source:
+        source, version = source.rsplit("@", 1)
+
+    parts = source.strip("/").split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise ValueError(
+            f"Invalid GitHub source: '{source}'. Expected format: owner/repo"
+        )
+    return parts[0], parts[1], version
+
+
+def _download_kit_from_github(
+    owner: str,
+    repo: str,
+    version: str = "",
+) -> Tuple[Path, str]:
+    """Download a kit from GitHub and extract to a temp directory.
+
+    Uses GitHub API tarball endpoint (stdlib only, no dependencies).
+
+    Args:
+        owner: GitHub repository owner.
+        repo: GitHub repository name.
+        version: Git ref (tag/branch/SHA). If empty, resolves latest release.
+
+    Returns:
+        (extracted_dir, resolved_version) — caller must clean up parent temp dir.
+
+    Raises:
+        RuntimeError: on network or extraction errors.
+    """
+    # Resolve version: if empty, query latest release
+    if not version:
+        version = _resolve_latest_github_release(owner, repo)
+
+    # Download tarball
+    url = f"https://api.github.com/repos/{owner}/{repo}/tarball/{version}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "cypilot-kit-installer",
+    }
+    req = urllib.request.Request(url, headers=headers)
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="cypilot-kit-"))
+    tar_path = tmp_dir / "kit.tar.gz"
+
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            with open(tar_path, "wb") as f:
+                shutil.copyfileobj(resp, f)
+    except Exception as exc:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise RuntimeError(
+            f"Failed to download kit from GitHub ({owner}/{repo}@{version}): {exc}"
+        ) from exc
+
+    # Extract
+    try:
+        with tarfile.open(tar_path, "r:gz") as tar:
+            tar.extractall(path=tmp_dir, filter="data")
+    except Exception as exc:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise RuntimeError(
+            f"Failed to extract kit archive: {exc}"
+        ) from exc
+
+    tar_path.unlink(missing_ok=True)
+
+    # Find the extracted directory (GitHub tarballs contain one top-level dir)
+    subdirs = [d for d in tmp_dir.iterdir() if d.is_dir()]
+    if len(subdirs) != 1:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise RuntimeError(
+            f"Unexpected archive structure: expected 1 directory, found {len(subdirs)}"
+        )
+
+    return subdirs[0], version
+
+
+def _resolve_latest_github_release(owner: str, repo: str) -> str:
+    """Query GitHub API for the latest release tag.
+
+    Falls back to default branch if no releases exist.
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "cypilot-kit-installer",
+    }
+    req = urllib.request.Request(url, headers=headers)
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+            tag = data.get("tag_name", "")
+            if tag:
+                return tag
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            pass  # No releases — fall through to default branch
+        else:
+            raise RuntimeError(
+                f"GitHub API error ({exc.code}): {exc.reason}"
+            ) from exc
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to query GitHub releases for {owner}/{repo}: {exc}"
+        ) from exc
+
+    # No releases found — use default branch (empty ref = default branch tarball)
+    return ""
 
 # ---------------------------------------------------------------------------
 # Config seeding — copy default .toml configs from kit scripts to config/
@@ -262,6 +391,7 @@ def install_kit(
     cypilot_dir: Path,
     kit_slug: str,
     kit_version: str = "",
+    source: str = "",
 ) -> Dict[str, Any]:
     """Install a kit: copy ready files from source into config/kits/{slug}/.
 
@@ -273,6 +403,7 @@ def install_kit(
         cypilot_dir: Resolved project cypilot directory.
         kit_slug: Kit identifier.
         kit_version: Kit version string.
+        source: Source identifier for registration (e.g. "github:owner/repo").
 
     Returns:
         Dict with: status, kit, version, files_copied,
@@ -317,7 +448,7 @@ def install_kit(
 
     # @cpt-begin:cpt-cypilot-algo-kit-install:p1:inst-register-core
     # Register in core.toml
-    _register_kit_in_core_toml(config_dir, kit_slug, kit_version, cypilot_dir)
+    _register_kit_in_core_toml(config_dir, kit_slug, kit_version, cypilot_dir, source=source)
     # @cpt-end:cpt-cypilot-algo-kit-install:p1:inst-register-core
 
     # @cpt-begin:cpt-cypilot-algo-kit-install:p1:inst-collect-meta
@@ -347,92 +478,142 @@ def install_kit(
 
 # @cpt-flow:cpt-cypilot-flow-kit-install-cli:p1
 def cmd_kit_install(argv: List[str]) -> int:
-    """Install a kit from a local path.
+    """Install a kit from GitHub or a local path.
 
     Delegates to install_kit() for the actual work, then regenerates
     .gen/ aggregates.
 
-    Usage: cypilot kit install <path> [--force] [--dry-run]
+    Usage:
+        cypilot kit install owner/repo[@version]   (GitHub, default)
+        cypilot kit install --path /local/dir       (local directory)
     """
     # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-parse-args
-    p = argparse.ArgumentParser(prog="kit install", description="Install a kit package")
-    p.add_argument("path", help="Path to kit source directory")
+    p = argparse.ArgumentParser(
+        prog="kit install",
+        description="Install a kit package from GitHub or a local directory",
+    )
+    p.add_argument(
+        "source", nargs="?", default=None,
+        help="GitHub source: owner/repo[@version] (e.g. cyberfabric/cyber-pilot-kit-sdlc@v1.0.0)",
+    )
+    p.add_argument(
+        "--path", dest="local_path", default=None,
+        help="Install from a local directory instead of GitHub",
+    )
     p.add_argument("--force", action="store_true", help="Overwrite existing kit")
     p.add_argument("--dry-run", action="store_true", help="Show what would be done")
     args = p.parse_args(argv)
+
+    if not args.source and not args.local_path:
+        p.error("Provide a GitHub source (owner/repo) or --path for a local directory")
+    if args.source and args.local_path:
+        p.error("Cannot use both positional source and --path")
     # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-parse-args
 
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-validate-source
-    kit_source = Path(args.path).resolve()
-    if not kit_source.is_dir():
-        ui.result({
-            "status": "FAIL",
-            "message": f"Kit source directory not found: {kit_source}",
-            "hint": "Provide a path to a valid kit directory",
-        })
-        return 2
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-validate-source
+    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-resolve-source
+    github_source = ""  # "github:owner/repo" for registration
+    tmp_dir_to_clean: Optional[Path] = None
 
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-read-slug-version
-    # Read slug and version from source conf.toml
-    kit_slug = _read_kit_slug(kit_source) or kit_source.name
-    kit_version = _read_kit_version(kit_source / _KIT_CONF_FILE) if (kit_source / _KIT_CONF_FILE).is_file() else ""
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-read-slug-version
+    if args.local_path:
+        # Local directory source
+        kit_source = Path(args.local_path).resolve()
+        if not kit_source.is_dir():
+            ui.result({
+                "status": "FAIL",
+                "message": f"Kit source directory not found: {kit_source}",
+                "hint": "Provide a path to a valid kit directory",
+            })
+            return 2
+        kit_slug = _read_kit_slug(kit_source) or kit_source.name
+        kit_version = _read_kit_version(kit_source / _KIT_CONF_FILE) if (kit_source / _KIT_CONF_FILE).is_file() else ""
+    else:
+        # GitHub source (default)
+        try:
+            owner, repo, version = _parse_github_source(args.source)
+        except ValueError as exc:
+            ui.result({
+                "status": "FAIL",
+                "message": str(exc),
+                "hint": "Expected format: owner/repo or owner/repo@version",
+            })
+            return 2
 
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-resolve-project
-    # Resolve project
-    resolved = _resolve_cypilot_dir()
-    if resolved is None:
-        return 1
-    _, cypilot_dir = resolved
-    config_kit_dir = cypilot_dir / "config" / "kits" / kit_slug
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-resolve-project
+        ui.step(f"Downloading {owner}/{repo}" + (f"@{version}" if version else " (latest)") + "...")
+        try:
+            kit_source, resolved_version = _download_kit_from_github(owner, repo, version)
+            tmp_dir_to_clean = kit_source.parent
+        except RuntimeError as exc:
+            ui.result({
+                "status": "FAIL",
+                "message": str(exc),
+            })
+            return 1
 
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-check-existing
-    if config_kit_dir.exists() and not args.force:
-        ui.result({
-            "status": "FAIL",
-            "message": f"Kit '{kit_slug}' already installed",
-            "hint": "Use --force to overwrite",
-        })
-        return 2
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-check-existing
+        kit_slug = _read_kit_slug(kit_source) or repo.removeprefix("cyber-pilot-kit-")
+        kit_version = resolved_version or _read_kit_version(kit_source / _KIT_CONF_FILE) if (kit_source / _KIT_CONF_FILE).is_file() else resolved_version
+        github_source = f"github:{owner}/{repo}"
+        ui.substep(f"Resolved: {kit_slug}@{kit_version or '(dev)'}")
+    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-resolve-source
 
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-dry-run
-    if args.dry_run:
-        ui.result({
-            "status": "DRY_RUN",
+    try:
+        # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-resolve-project
+        resolved = _resolve_cypilot_dir()
+        if resolved is None:
+            return 1
+        _, cypilot_dir = resolved
+        config_kit_dir = cypilot_dir / "config" / "kits" / kit_slug
+        # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-resolve-project
+
+        # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-check-existing
+        if config_kit_dir.exists() and not args.force:
+            ui.result({
+                "status": "FAIL",
+                "message": f"Kit '{kit_slug}' already installed",
+                "hint": "Use --force to overwrite",
+            })
+            return 2
+        # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-check-existing
+
+        # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-dry-run
+        if args.dry_run:
+            ui.result({
+                "status": "DRY_RUN",
+                "kit": kit_slug,
+                "version": kit_version,
+                "source": github_source or kit_source.as_posix(),
+                "target": config_kit_dir.as_posix(),
+            })
+            return 0
+        # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-dry-run
+
+        # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-delegate-install
+        result = install_kit(kit_source, cypilot_dir, kit_slug, kit_version, source=github_source)
+        # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-delegate-install
+
+        # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-regen-gen
+        regenerate_gen_aggregates(cypilot_dir)
+        # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-regen-gen
+
+        # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-output-result
+        output: Dict[str, Any] = {
+            "status": result["status"],
+            "action": result.get("action", "installed"),
             "kit": kit_slug,
             "version": kit_version,
-            "source": kit_source.as_posix(),
-            "target": config_kit_dir.as_posix(),
-        })
+            "files_written": result.get("files_copied", 0),
+        }
+        if github_source:
+            output["source"] = github_source
+        if result.get("errors"):
+            output["errors"] = result["errors"]
+
+        ui.result(output, human_fn=lambda d: _human_kit_install(d))
         return 0
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-dry-run
+        # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-output-result
 
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-delegate-install
-    result = install_kit(kit_source, cypilot_dir, kit_slug, kit_version)
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-delegate-install
-
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-regen-gen
-    # Regenerate .gen/ aggregates
-    regenerate_gen_aggregates(cypilot_dir)
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-regen-gen
-
-    # @cpt-begin:cpt-cypilot-flow-kit-install-cli:p1:inst-output-result
-    output: Dict[str, Any] = {
-        "status": result["status"],
-        "action": result.get("action", "installed"),
-        "kit": kit_slug,
-        "version": kit_version,
-        "files_written": result.get("files_copied", 0),
-    }
-    if result.get("errors"):
-        output["errors"] = result["errors"]
-
-    ui.result(output, human_fn=lambda d: _human_kit_install(d))
-    return 0
-    # @cpt-end:cpt-cypilot-flow-kit-install-cli:p1:inst-output-result
+    finally:
+        if tmp_dir_to_clean:
+            shutil.rmtree(tmp_dir_to_clean, ignore_errors=True)
 
 def _human_kit_install(data: dict) -> None:
     status = data.get("status", "")
@@ -1050,6 +1231,7 @@ def _register_kit_in_core_toml(
     kit_slug: str,
     kit_version: str,
     cypilot_dir: Path,
+    source: str = "",
 ) -> None:
     """Register or update a kit entry in config/core.toml."""
     # @cpt-begin:cpt-cypilot-algo-kit-config-helpers:p1:inst-register-core
@@ -1065,12 +1247,15 @@ def _register_kit_in_core_toml(
         return
 
     kits = data.setdefault("kits", {})
-    kits[kit_slug] = {
+    kit_entry: Dict[str, Any] = {
         "format": "Cypilot",
         "path": f"config/kits/{kit_slug}",
     }
+    if source:
+        kit_entry["source"] = source
     if kit_version:
-        kits[kit_slug]["version"] = kit_version
+        kit_entry["version"] = kit_version
+    kits[kit_slug] = kit_entry
 
     # Write back using our TOML serializer
     try:

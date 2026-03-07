@@ -168,7 +168,7 @@ PRDs must NOT contain the following — report as violation if found:
 
 ### Phase 2: Content Creation
 
-- [ ] Write each section guided by blueprint prompts and examples
+- [ ] Write each section guided by template prompts and examples
 - [ ] Use example as reference for content depth:
   - Vision → how example explains purpose (BIZ-PRD-001)
   - Actors → how example defines actors (BIZ-PRD-002)
@@ -329,7 +329,7 @@ When reviewing PRs that add or change PRD/requirements documents, additionally f
 - [ ] Completeness and clarity of requirements
 - [ ] Testability and acceptance criteria for every requirement
 - [ ] Traceability to business goals and stated problems
-- [ ] Compliance with `{cypilot_path}/config/kits/sdlc/artifacts/PRD/template.md` structure (generated from blueprint)
+- [ ] Compliance with `{cypilot_path}/config/kits/sdlc/artifacts/PRD/template.md` structure
 - [ ] Alignment with best industry standard practices for large SaaS systems and platforms
 - [ ] Critical assessment of requirements quality — challenge vague, overlapping, or untestable items
 - [ ] Split findings by checklist category and rate each 1-10
