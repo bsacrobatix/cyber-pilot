@@ -1370,6 +1370,42 @@ class TestCmdUpdateLayoutMigration(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# _cleanup_legacy_blueprint_dirs (ADR-0001)
+# ---------------------------------------------------------------------------
+
+class TestCleanupLegacyBlueprintDirs(unittest.TestCase):
+    """Tests for removing leftover blueprints/ from config/kits/*/."""
+
+    def test_removes_blueprints_dir(self):
+        from cypilot.commands.update import _cleanup_legacy_blueprint_dirs
+        with TemporaryDirectory() as td:
+            config = Path(td)
+            bp = config / "kits" / "sdlc" / "blueprints"
+            bp.mkdir(parents=True)
+            (bp / "PRD.md").write_text("# old blueprint\n", encoding="utf-8")
+            _cleanup_legacy_blueprint_dirs(config)
+            self.assertFalse(bp.exists())
+            # Kit dir itself should remain
+            self.assertTrue((config / "kits" / "sdlc").is_dir())
+
+    def test_noop_when_no_blueprints(self):
+        from cypilot.commands.update import _cleanup_legacy_blueprint_dirs
+        with TemporaryDirectory() as td:
+            config = Path(td)
+            kit = config / "kits" / "sdlc"
+            kit.mkdir(parents=True)
+            (kit / "SKILL.md").write_text("# skill\n", encoding="utf-8")
+            _cleanup_legacy_blueprint_dirs(config)
+            self.assertTrue((kit / "SKILL.md").is_file())
+
+    def test_noop_when_no_kits_dir(self):
+        from cypilot.commands.update import _cleanup_legacy_blueprint_dirs
+        with TemporaryDirectory() as td:
+            config = Path(td)
+            _cleanup_legacy_blueprint_dirs(config)  # should not raise
+
+
+# ---------------------------------------------------------------------------
 # _remove_system_from_core_toml (ADR-0014)
 # ---------------------------------------------------------------------------
 

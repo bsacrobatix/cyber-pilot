@@ -179,6 +179,10 @@ def cmd_update(argv: List[str]) -> int:
     # @cpt-end:cpt-cypilot-flow-version-config-update:p1:inst-detect-layout
     # @cpt-end:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-detect-layout-algo
 
+    # ── Step 1b1: Remove leftover blueprints/ from config kits (ADR-0001) ──
+    if not args.dry_run:
+        _cleanup_legacy_blueprint_dirs(config_dir)
+
     # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-migrate-config-algo
     # @cpt-begin:cpt-cypilot-algo-version-config-update-pipeline:p1:inst-remove-system-section-algo
     # @cpt-begin:cpt-cypilot-flow-version-config-update:p1:inst-migrate-config
@@ -588,6 +592,24 @@ def _maybe_regenerate_agents(
 # ---------------------------------------------------------------------------
 # core.toml [system] removal migration (ADR-0014)
 # ---------------------------------------------------------------------------
+
+
+def _cleanup_legacy_blueprint_dirs(config_dir: Path) -> None:
+    """Remove leftover blueprints/ directories from config/kits/*/.
+
+    Per ADR-0001, the blueprint system was removed.  Old projects may
+    still have config/kits/{slug}/blueprints/ lingering even after
+    layout migration (which only skips copying them, never deletes).
+    """
+    kits_dir = config_dir / "kits"
+    if not kits_dir.is_dir():
+        return
+    for kit_dir in kits_dir.iterdir():
+        if not kit_dir.is_dir():
+            continue
+        bp = kit_dir / "blueprints"
+        if bp.is_dir():
+            shutil.rmtree(bp, ignore_errors=True)
 
 
 def _remove_system_from_core_toml(config_dir: Path) -> bool:
