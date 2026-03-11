@@ -304,6 +304,12 @@ Shortcut: `agents --openai`
 
 ### Migration Commands
 
+#### migrate
+```bash
+migrate [--project-root <path>] [--cypilot-root <path>] [--dry-run] [--yes]
+```
+Migrates Cypilot v2 projects to v3 (adapter-based → blueprint-based, artifacts.json → artifacts.toml, three-directory layout).
+
 #### migrate-config
 ```bash
 migrate-config [--project-root <path>] [--dry-run]

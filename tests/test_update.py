@@ -1470,7 +1470,8 @@ class TestDefaultCoreToml(unittest.TestCase):
         self.assertNotIn("system", core)
         self.assertEqual(core["version"], "1.0")
         self.assertEqual(core["project_root"], "..")
-        self.assertIn("sdlc", core["kits"])
+        # Kits are empty by default — registered dynamically via install_kit()
+        self.assertEqual(core["kits"], {})
 
 
 # ---------------------------------------------------------------------------

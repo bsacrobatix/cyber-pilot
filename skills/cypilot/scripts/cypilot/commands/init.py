@@ -127,16 +127,14 @@ def _default_core_toml() -> dict:
 
     System identity (name, slug, kit) is defined in artifacts.toml only
     (see ADR-0014: cpt-cypilot-adr-remove-system-from-core-toml).
+
+    Kits are registered dynamically via install_kit() when user accepts
+    installation — not hardcoded here.
     """
     return {
         "version": "1.0",
         "project_root": "..",
-        "kits": {
-            "sdlc": {
-                "format": "Cypilot",
-                "path": "config/kits/sdlc",
-            },
-        },
+        "kits": {},
     }
 
 def _prompt_path(question: str, default: Optional[str]) -> str:

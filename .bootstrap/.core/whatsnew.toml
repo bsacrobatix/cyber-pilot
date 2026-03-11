@@ -93,3 +93,11 @@ details = """\
 - `config/AGENTS.md` loading changed from `WHEN it exists` → `FIRST`
 - `_show_whatsnew` now compares against installed version number instead of key-set diff\
 """
+
+["v3.0.10-beta"]
+summary = "Dynamic kit registration, auto-generated upgrade tests"
+details = """\
+- **Kit not hardcoded in core.toml** — `_default_core_toml()` now returns empty `kits`; sdlc registered only when user accepts installation
+- **`cpt update` respects core.toml** — no longer installs kits that aren't registered
+- **E2E upgrade tests auto-generated** — `_VERSION_TAGS` populated from git tags; no manual maintenance needed\
+"""
