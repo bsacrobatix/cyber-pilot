@@ -644,12 +644,26 @@ def file_level_kit_update(
                         rel_within_dir = src_rel_path[len(source_base) + 1:]
                         target_mapping[src_rel_path] = binding_path / rel_within_dir
                     else:
-                        # Fallback: use binding path directly
-                        target_mapping[src_rel_path] = binding_path / src_rel_path.split("/")[-1]
+                        # Fallback: try to compute relative path within directory
+                        try:
+                            rel_within_dir = Path(src_rel_path).relative_to(info.source_base).as_posix()
+                            target_mapping[src_rel_path] = binding_path / rel_within_dir
+                        except ValueError:
+                            # Cannot compute relative path, use filename as last resort
+                            sys.stderr.write(
+                                f"    [debug] directory resource fallback: "
+                                f"source_base={info.source_base}, src_rel_path={src_rel_path}, "
+                                f"binding_path={binding_path}\n"
+                            )
+                            target_mapping[src_rel_path] = binding_path / src_rel_path.split("/")[-1]
                 else:
                     # File resource: binding path is the target file
                     # But if binding path is a directory, append the filename
                     if binding_path.is_dir():
+                        sys.stderr.write(
+                            f"    [warn] file resource binding is a directory: "
+                            f"binding_path={binding_path}, src_rel_path={src_rel_path}\n"
+                        )
                         filename = src_rel_path.split("/")[-1]
                         target_mapping[src_rel_path] = binding_path / filename
                     else:
@@ -837,9 +851,8 @@ def file_level_kit_update(
             result_added.append(entry)
 
         elif change_type == "removed":
-            if action in ("accepted",) and not dry_run:
-                if dest.is_file():
-                    dest.unlink()
+            if action in ("accepted",) and not dry_run and dest.is_file():
+                dest.unlink()
             result_removed.append(entry)
 
         elif change_type == "modified":

@@ -535,3 +535,87 @@ class TestBuildSourceToResourceMapping:
         assert source_map["artifacts/ADR/template.md"] == "adr_dir"
         assert resource_info["skill_file"].type == "file"
         assert resource_info["adr_dir"].type == "directory"
+
+
+# ---------------------------------------------------------------------------
+# file_level_kit_update integration
+# ---------------------------------------------------------------------------
+
+class TestFileLevelKitUpdateIntegration:
+    """Integration tests for file_level_kit_update with manifest-driven bindings."""
+
+    def test_file_and_directory_resources_written_to_bound_paths(self, tmp_path: Path) -> None:
+        """Both file and directory resources are written to their registered bound paths."""
+        from cypilot.utils.diff_engine import file_level_kit_update
+        from cypilot.utils.manifest import build_source_to_resource_mapping
+
+        kit = tmp_path / "kit"
+        kit.mkdir()
+        user_dir = tmp_path / "user"
+        user_dir.mkdir()
+        bound_skill = tmp_path / "bound" / "skill.md"
+        bound_adr = tmp_path / "bound" / "adr"
+        bound_skill.parent.mkdir(parents=True)
+        bound_adr.mkdir(parents=True)
+
+        # Create kit source with file resource (SKILL.md) and directory resource (artifacts/ADR)
+        (kit / "SKILL.md").write_text("# Skill File\n", encoding="utf-8")
+        (kit / "artifacts" / "ADR").mkdir(parents=True)
+        (kit / "artifacts" / "ADR" / "template.md").write_text("# ADR Template\n", encoding="utf-8")
+        (kit / "artifacts" / "ADR" / "checklist.md").write_text("# ADR Checklist\n", encoding="utf-8")
+
+        _write_manifest(kit, """\
+            [manifest]
+            version = "1.0"
+
+            [[resources]]
+            id = "skill_file"
+            source = "SKILL.md"
+            default_path = "SKILL.md"
+            type = "file"
+
+            [[resources]]
+            id = "adr_dir"
+            source = "artifacts/ADR"
+            default_path = "artifacts/ADR"
+            type = "directory"
+        """)
+
+        # Build mappings from manifest
+        source_to_resource_id, resource_info = build_source_to_resource_mapping(kit)
+
+        # Resource bindings redirect to custom locations
+        resource_bindings = {
+            "skill_file": bound_skill,
+            "adr_dir": bound_adr,
+        }
+
+        result = file_level_kit_update(
+            kit,
+            user_dir,
+            auto_approve=True,
+            source_to_resource_id=source_to_resource_id,
+            resource_info=resource_info,
+            resource_bindings=resource_bindings,
+        )
+
+        # Verify file resource written to bound path
+        assert bound_skill.is_file(), "skill_file should be written to bound path"
+        assert bound_skill.read_text(encoding="utf-8") == "# Skill File\n"
+
+        # Verify directory resource files written to bound directory
+        assert (bound_adr / "template.md").is_file(), "adr_dir/template.md should be written"
+        assert (bound_adr / "checklist.md").is_file(), "adr_dir/checklist.md should be written"
+        assert (bound_adr / "template.md").read_text(encoding="utf-8") == "# ADR Template\n"
+        assert (bound_adr / "checklist.md").read_text(encoding="utf-8") == "# ADR Checklist\n"
+
+        # Verify files NOT written to user_dir (they went to bound paths)
+        assert not (user_dir / "SKILL.md").exists()
+        assert not (user_dir / "artifacts" / "ADR" / "template.md").exists()
+
+        # Verify result reports added files
+        assert result["status"] == "updated"
+        added_paths = [e["path"] for e in result["added"]]
+        assert "SKILL.md" in added_paths
+        assert "artifacts/ADR/template.md" in added_paths
+        assert "artifacts/ADR/checklist.md" in added_paths

@@ -545,7 +545,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has a file
             (src / "artifacts").mkdir()
@@ -587,7 +589,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has a directory with files
             (src / "artifacts" / "ADR").mkdir(parents=True)
@@ -632,7 +636,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has bound and unbound files
             (src / "artifacts").mkdir()
@@ -676,7 +682,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has updated content
             (src / "artifacts").mkdir()
@@ -741,7 +749,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has example.md inside examples/ subdirectory
             (src / "artifacts" / "ADR" / "examples").mkdir(parents=True)
@@ -783,7 +793,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has example.md
             (src / "artifacts" / "ADR" / "examples").mkdir(parents=True)
@@ -825,7 +837,9 @@ class TestFileLevelKitUpdateResourceBindings(unittest.TestCase):
             src = Path(td) / "src"
             usr = Path(td) / "usr"
             redirect_dir = Path(td) / "redirect"
-            src.mkdir(); usr.mkdir(); redirect_dir.mkdir()
+            src.mkdir()
+            usr.mkdir()
+            redirect_dir.mkdir()
 
             # Source has template.md but NOT example.md
             (src / "artifacts").mkdir()

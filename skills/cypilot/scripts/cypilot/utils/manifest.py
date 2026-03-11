@@ -357,22 +357,16 @@ def build_source_to_resource_mapping(
     resource_info: Dict[str, ResourceInfo] = {}
 
     # @cpt-begin:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-record-resource-info
+    # @cpt-begin:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-map-file-resources
+    # @cpt-begin:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-expand-directories
     for res in manifest.resources:
         resource_info[res.id] = ResourceInfo(
             type=res.type,
             source_base=res.source,
         )
-    # @cpt-end:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-record-resource-info
-
-    # @cpt-begin:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-map-file-resources
-    for res in manifest.resources:
         if res.type == "file":
             source_to_resource_id[res.source] = res.id
-    # @cpt-end:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-map-file-resources
-
-    # @cpt-begin:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-expand-directories
-    for res in manifest.resources:
-        if res.type == "directory":
+        elif res.type == "directory":
             source_dir = kit_source / res.source
             if source_dir.is_dir():
                 for fpath in source_dir.rglob("*"):
@@ -380,6 +374,8 @@ def build_source_to_resource_mapping(
                         rel_path = fpath.relative_to(kit_source).as_posix()
                         source_to_resource_id[rel_path] = res.id
     # @cpt-end:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-expand-directories
+    # @cpt-end:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-map-file-resources
+    # @cpt-end:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-record-resource-info
 
     # @cpt-begin:cpt-cypilot-algo-kit-manifest-source-mapping:p1:inst-return-mapping
     return source_to_resource_id, resource_info
