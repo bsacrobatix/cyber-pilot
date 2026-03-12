@@ -338,7 +338,10 @@ def cmd_adapter_info(argv: list[str]) -> int:
         from .resolve_vars import _collect_all_variables
         vars_result = _collect_all_variables(project_root, adapter_dir, core_data)
         config["variables"] = vars_result["variables"]
-    except Exception as exc:
+        config["variables_by_kit"] = vars_result.get("kits", {})
+        if vars_result.get("collisions"):
+            config["variables_collisions"] = vars_result["collisions"]
+    except (ImportError, FileNotFoundError, OSError, ValueError) as exc:
         config["variables"] = {}
         config["variables_error"] = str(exc)
     # @cpt-end:cpt-cypilot-algo-core-infra-display-info:p1:inst-info-compute-metadata
@@ -473,6 +476,7 @@ def _human_info(data: dict) -> None:
         ui.step(f"Agent integrations ({len(agents)})")
         ui.substep(f"  {', '.join(agents)}")
 
+    # @cpt-begin:cpt-cypilot-flow-developer-experience-resolve-vars:p1:inst-info-render-variables
     # Resolved variables
     variables = data.get("variables", {})
     if variables:
@@ -480,6 +484,7 @@ def _human_info(data: dict) -> None:
         ui.step(f"Variables ({len(variables)})")
         for name, path in sorted(variables.items()):
             ui.substep(f"  {{{name}}}: {ui.relpath(path)}")
+    # @cpt-end:cpt-cypilot-flow-developer-experience-resolve-vars:p1:inst-info-render-variables
 
     # Registry errors
     reg_err = data.get("artifacts_registry_error")

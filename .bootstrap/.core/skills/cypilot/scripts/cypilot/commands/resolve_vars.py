@@ -35,7 +35,10 @@ def _resolve_kit_variables(
     for identifier, binding in resources.items():
         # @cpt-begin:cpt-cypilot-flow-developer-experience-resolve-vars:p1:inst-resolve-vars-resolve-binding
         if isinstance(binding, dict):
-            rel_path = str(binding.get("path", "")).strip()
+            raw_path = binding.get("path")
+            if not isinstance(raw_path, str):
+                continue
+            rel_path = raw_path.strip()
         elif isinstance(binding, str):
             rel_path = binding.strip()
         else:
@@ -61,8 +64,6 @@ def _collect_all_variables(
     - ``kits``: per-kit resource variables {slug: {var: path}}
     - ``variables``: flat merged dict of all variables for format_map()
     """
-    config_dir = adapter_dir / "config"
-
     # @cpt-begin:cpt-cypilot-algo-developer-experience-resolve-vars:p1:inst-collect-system-vars
     # @cpt-begin:cpt-cypilot-flow-developer-experience-resolve-vars:p1:inst-resolve-vars-system
     # -- System variables --
@@ -92,18 +93,32 @@ def _collect_all_variables(
     # @cpt-begin:cpt-cypilot-algo-developer-experience-resolve-vars:p1:inst-merge-flat-dict
     # -- Flat merged dict (system + all kits) --
     flat: Dict[str, str] = dict(system_vars)
+    collisions: list = []
+    owners: Dict[str, str] = {k: "system" for k in system_vars}
     for slug, kvars in kit_vars.items():
         for var_name, var_path in kvars.items():
-            # Kit resource IDs are already globally unique by convention
+            if var_name in flat and flat[var_name] != var_path:
+                collisions.append({
+                    "variable": var_name,
+                    "kit": slug,
+                    "path": var_path,
+                    "previous_kit": owners[var_name],
+                    "previous_path": flat[var_name],
+                })
+                continue  # first-writer-wins; skip collision
             flat[var_name] = var_path
+            owners[var_name] = slug
     # @cpt-end:cpt-cypilot-algo-developer-experience-resolve-vars:p1:inst-merge-flat-dict
 
     # @cpt-begin:cpt-cypilot-algo-developer-experience-resolve-vars:p1:inst-return-structured
-    return {
+    result: Dict[str, Any] = {
         "system": system_vars,
         "kits": kit_vars,
         "variables": flat,
     }
+    if collisions:
+        result["collisions"] = collisions
+    return result
     # @cpt-end:cpt-cypilot-algo-developer-experience-resolve-vars:p1:inst-return-structured
 
 

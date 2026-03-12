@@ -224,10 +224,10 @@ ALWAYS proceed as normal coding assistant WHEN user declines initialization
 ## Discover Cypilot
 
 ```bash
-python3 {cypilot_path}/.core/skills/cypilot/scripts/cypilot.py info --root {PROJECT_ROOT} --cypilot-root {cypilot_path}
+python3 {cypilot_path}/.core/skills/cypilot/scripts/cypilot.py --json info --root {PROJECT_ROOT} --cypilot-root {cypilot_path}
 ```
 
-**Parse output**: `status`, `cypilot_dir`, `project_root`, `specs`, `rules`, `variables`
+**Parse output** (JSON): `status`, `cypilot_dir`, `project_root`, `specs`, `rules`, `variables`
 
 **Store `variables`** dict — it maps every template variable (`{adr_template}`, `{scripts}`, etc.) to its absolute path. Use it to resolve `{variable}` references in kit markdown files (AGENTS.md, SKILL.md, rules.md, workflows).
 

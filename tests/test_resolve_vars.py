@@ -442,6 +442,86 @@ class TestInfoVariablesIntegration(unittest.TestCase):
             finally:
                 os.chdir(cwd)
 
+    def test_info_includes_variables_by_kit(self):
+        """cpt info output contains variables_by_kit dict."""
+        from cypilot.commands.adapter_info import cmd_adapter_info
+
+        with TemporaryDirectory() as td:
+            root = Path(td) / "proj"
+            adapter = _bootstrap_project(root)
+            config = adapter / "config"
+            _write_core_toml(config, {
+                "version": "1.0",
+                "project_root": "..",
+                "kits": {
+                    "sdlc": {
+                        "format": "Cypilot",
+                        "path": "config/kits/sdlc",
+                        "version": "2.0",
+                        "resources": {
+                            "adr_template": {"path": "config/kits/sdlc/artifacts/ADR/template.md"},
+                        },
+                    },
+                },
+            })
+
+            kit_dir = config / "kits" / "sdlc"
+            kit_dir.mkdir(parents=True)
+
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = cmd_adapter_info(["--root", str(root)])
+                self.assertEqual(rc, 0)
+                out = json.loads(buf.getvalue())
+                by_kit = out.get("variables_by_kit", {})
+                self.assertIn("sdlc", by_kit)
+                self.assertIn("adr_template", by_kit["sdlc"])
+            finally:
+                os.chdir(cwd)
+
+    def test_info_includes_collision_flag(self):
+        """cpt info output contains variables_collisions when collision exists."""
+        from cypilot.commands.adapter_info import cmd_adapter_info
+
+        with TemporaryDirectory() as td:
+            root = Path(td) / "proj"
+            adapter = _bootstrap_project(root)
+            config = adapter / "config"
+            _write_core_toml(config, {
+                "version": "1.0",
+                "project_root": "..",
+                "kits": {
+                    "kit_a": {
+                        "resources": {"dup_var": {"path": "a/file"}},
+                    },
+                    "kit_b": {
+                        "resources": {"dup_var": {"path": "b/file"}},
+                    },
+                },
+            })
+
+            kit_dir_a = config / "kits" / "kit_a"
+            kit_dir_a.mkdir(parents=True)
+            kit_dir_b = config / "kits" / "kit_b"
+            kit_dir_b.mkdir(parents=True)
+
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = cmd_adapter_info(["--root", str(root)])
+                self.assertEqual(rc, 0)
+                out = json.loads(buf.getvalue())
+                self.assertIn("variables_collisions", out)
+                self.assertEqual(len(out["variables_collisions"]), 1)
+                self.assertEqual(out["variables_collisions"][0]["variable"], "dup_var")
+            finally:
+                os.chdir(cwd)
+
     def test_info_variables_empty_when_no_kits(self):
         """cpt info variables has only system vars when no kit resources."""
         from cypilot.commands.adapter_info import cmd_adapter_info
@@ -541,6 +621,71 @@ class TestCollectAllVariablesEdgeCases(unittest.TestCase):
             self.assertNotIn("bad_kit", result["kits"])
             self.assertIn("good_kit", result["kits"])
             self.assertIn("var_x", result["variables"])
+
+    def test_collision_detected_different_paths(self):
+        """Duplicate var_name across kits with different paths records collision."""
+        with TemporaryDirectory() as td:
+            root = Path(td) / "proj"
+            adapter = _bootstrap_project(root)
+            result = _collect_all_variables(root, adapter, {
+                "kits": {
+                    "kit_a": {
+                        "resources": {"shared_var": {"path": "a/path"}},
+                    },
+                    "kit_b": {
+                        "resources": {"shared_var": {"path": "b/path"}},
+                    },
+                },
+            })
+            # First-writer-wins: kit_a's value kept
+            self.assertTrue(result["variables"]["shared_var"].endswith("a/path"))
+            # Collision recorded
+            self.assertIn("collisions", result)
+            self.assertEqual(len(result["collisions"]), 1)
+            c = result["collisions"][0]
+            self.assertEqual(c["variable"], "shared_var")
+            self.assertEqual(c["kit"], "kit_b")
+            self.assertTrue(c["path"].endswith("b/path") or c["path"] == (adapter / "b/path").resolve().as_posix())
+
+    def test_no_collision_same_path(self):
+        """Same var_name with identical path across kits is NOT a collision."""
+        with TemporaryDirectory() as td:
+            root = Path(td) / "proj"
+            adapter = _bootstrap_project(root)
+            result = _collect_all_variables(root, adapter, {
+                "kits": {
+                    "kit_a": {
+                        "resources": {"shared_var": {"path": "same/path"}},
+                    },
+                    "kit_b": {
+                        "resources": {"shared_var": {"path": "same/path"}},
+                    },
+                },
+            })
+            self.assertNotIn("collisions", result)
+            self.assertIn("shared_var", result["variables"])
+
+    def test_non_string_path_in_dict_binding_skipped(self):
+        """Dict binding with non-string path (e.g. int) is skipped."""
+        with TemporaryDirectory() as td:
+            root = Path(td) / "proj"
+            adapter = _bootstrap_project(root)
+            result = _collect_all_variables(root, adapter, {
+                "kits": {
+                    "mykit": {
+                        "resources": {
+                            "good": {"path": "valid/path"},
+                            "int_path": {"path": 42},
+                            "list_path": {"path": ["a", "b"]},
+                            "none_path": {"path": None},
+                        },
+                    },
+                },
+            })
+            self.assertIn("good", result["variables"])
+            self.assertNotIn("int_path", result["variables"])
+            self.assertNotIn("list_path", result["variables"])
+            self.assertNotIn("none_path", result["variables"])
 
 
 class TestCmdResolveVarsCorruptToml(unittest.TestCase):

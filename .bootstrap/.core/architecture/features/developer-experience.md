@@ -50,6 +50,7 @@ Reduces friction in daily Cypilot usage. `doctor` catches environment issues bef
 | Actor | Role in Feature |
 |-------|-----------------|
 | `cpt-cypilot-actor-user` | Runs `cpt doctor`, `cpt self-check`, installs hooks/completions |
+| `cpt-cypilot-actor-ai-agent` | Invokes `cpt resolve-vars` and `cpt info` to resolve template variables for kit file substitution |
 | `cpt-cypilot-actor-ci-pipeline` | Runs validation via pre-commit hooks |
 
 ### 4. References
@@ -168,6 +169,9 @@ Reduces friction in daily Cypilot usage. `doctor` catches environment issues bef
 6. [x] - `p1` - Merge system + kit variables into flat dict - `inst-resolve-vars-merge`
 7. [x] - `p1` - **IF** `--kit` filter, restrict to that kit - `inst-resolve-vars-filter-kit`
 8. [x] - `p1` - **RETURN** JSON: `{status, system, kits, variables}` - `inst-resolve-vars-return`
+
+**Supporting**:
+- [x] - `p1` - Render resolved variables in human-friendly `info` output - `inst-info-render-variables`
 
 ### Shell Completions
 
