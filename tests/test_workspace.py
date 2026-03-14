@@ -1590,6 +1590,51 @@ class TestLoadReachableSourceMetaError:
             assert sc.error is None
             assert sc.meta is mock_meta
 
+    def test_invalid_explicit_adapter_no_autodiscovery(self):
+        """When explicit_adapter is provided but invalid, must NOT auto-discover."""
+        with TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            source_dir = tmp / "remote"
+            source_dir.mkdir()
+
+            # Create a valid discoverable adapter inside source_dir
+            discoverable = source_dir / ".bootstrap"
+            discoverable.mkdir()
+            (discoverable / "config").mkdir()
+
+            # Explicit adapter points to a non-existent directory
+            bad_adapter = tmp / "bad-adapter"
+
+            src = SourceEntry(name="pinned", path=str(source_dir), adapter=".bad-adapter")
+            sc = _load_reachable_source("pinned", src, source_dir, bad_adapter)
+
+            assert sc.error is not None
+            assert "Pinned adapter" in sc.error
+            assert "pinned" in sc.error
+            # Must NOT have picked up the discoverable adapter
+            assert sc.adapter_dir is None
+            assert sc.meta is None
+
+    def test_meta_error_mentions_adapter_path(self):
+        """When load_artifacts_meta fails, error message includes adapter path."""
+        with TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            source_dir = tmp / "remote"
+            source_dir.mkdir()
+            adapter_dir = source_dir / ".bootstrap"
+            adapter_dir.mkdir()
+            (adapter_dir / "config").mkdir()
+
+            src = SourceEntry(name="broken", path=str(source_dir))
+            with patch(
+                "cypilot.utils.context.load_artifacts_meta",
+                return_value=(None, "bad toml"),
+            ):
+                sc = _load_reachable_source("broken", src, source_dir, adapter_dir)
+            assert sc.error is not None
+            assert "adapter:" in sc.error
+            assert str(adapter_dir) in sc.error
+
 
 # ---------------------------------------------------------------------------
 # Tests for git_utils — additional coverage

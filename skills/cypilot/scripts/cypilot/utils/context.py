@@ -618,17 +618,26 @@ def _load_reachable_source(
     # @cpt-end:cpt-cypilot-algo-workspace-load-context:p1:inst-ctx-load-source-meta
     from .files import find_cypilot_directory
 
-    # Priority: use explicitly configured adapter path first
+    # Priority: use explicitly configured adapter path first;
+    # when pinned adapter is invalid do NOT auto-discover a different one
+    # (mirrors workspace_info._probe_source_adapter semantics).
     adapter_dir = None
-    if explicit_adapter is not None and explicit_adapter.is_dir() and (explicit_adapter / "config").is_dir():
-        adapter_dir = explicit_adapter
+    src_error = None
+    if explicit_adapter is not None:
+        if explicit_adapter.is_dir() and (explicit_adapter / "config").is_dir():
+            adapter_dir = explicit_adapter
+        else:
+            # Pinned adapter invalid — report error, skip auto-discovery
+            src_error = (
+                f"Pinned adapter for source '{name}' is not a valid "
+                f"cypilot directory: {explicit_adapter}"
+            )
     else:
-        # Fallback: auto-discover adapter from source root
+        # No explicit adapter — auto-discover from source root
         adapter_dir = find_cypilot_directory(resolved_path)
 
     meta = None
     reg_systems: Set[str] = set()
-    src_error = None
 
     if adapter_dir is not None:
         m, err = load_artifacts_meta(adapter_dir)
@@ -636,9 +645,10 @@ def _load_reachable_source(
             meta = m
             reg_systems = m.get_all_system_prefixes()
         elif err:
-            src_error = f"Failed to load artifacts metadata for source '{name}': {err}"
-    elif src_entry.adapter is not None:
-        src_error = f"Adapter not found for source '{name}' at {resolved_path}"
+            src_error = (
+                f"Failed to load artifacts metadata for source '{name}'"
+                f" (adapter: {adapter_dir}): {err}"
+            )
 
     return SourceContext(
         name=name,
