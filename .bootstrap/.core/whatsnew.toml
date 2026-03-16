@@ -134,3 +134,13 @@ details = """\
 - **Context budget thresholds** calibrated from real SDLC kit sizes and prompt engineering research (Lost in the Middle, rule-following degradation >8K tokens)
 - **Execution plans FEATURE spec** fully checked off (88/90 items done)\
 """
+
+["v3.0.14-beta"]
+summary = "Selective architecture copy, CLI preference for agents"
+details = """\
+- **Selective architecture copy** — `.core/` now copies only essential specs from `architecture/` (traceability.md, CDSL.md, cli.md, artifacts-registry.md, kit/*.md) instead of full ADR/DESIGN/PRD/features; reduces `.core/` footprint and avoids copying project-specific artifacts
+- **Force mode clears `.core/`** — `cpt update` now fully removes `.core/` before copying to ensure no stale files remain from previous versions
+- **Prefer `cpt` CLI over direct script invocation** — SKILL.md detects and prefers installed `cpt` command over raw `python3` invocations for AI agents (shorter commands = more reliable LLM execution)
+- **CLI Resolution in SKILL.md** — compact section with `~/.cypilot/cache/` for dismissal state instead of project-local `.local/`
+- **Secret scanner fix** — replaced high-entropy `_ID_CHARS` string literal with `string.ascii_lowercase + string.digits` to avoid false positives from trufflehog3 and similar tools\
+"""

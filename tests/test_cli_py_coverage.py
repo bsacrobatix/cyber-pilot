@@ -1656,12 +1656,12 @@ class TestInitCopyFromCache(unittest.TestCase):
             r1 = _copy_from_cache(cache, target, force=False)
             self.assertEqual(r1["requirements"], "created")
             self.assertEqual(r1.get("schemas", "missing_in_cache"), "missing_in_cache")
-            # Second call without force → skipped
+            # Second call without force → skipped (init behavior)
             r2 = _copy_from_cache(cache, target, force=False)
             self.assertEqual(r2["requirements"], "skipped")
-            # Third call with force → updated
+            # Third call with force → created (update behavior: .core/ fully cleared first)
             r3 = _copy_from_cache(cache, target, force=True)
-            self.assertEqual(r3["requirements"], "updated")
+            self.assertEqual(r3["requirements"], "created")
 
     def test_missing_cache_dir_entries(self):
         """When cache dirs don't exist, reports missing_in_cache."""

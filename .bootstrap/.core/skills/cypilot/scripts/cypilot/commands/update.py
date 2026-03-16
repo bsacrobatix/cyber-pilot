@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .init import (
     CACHE_DIR,
+    COPY_ARCHITECTURE_ITEMS,
     COPY_DIRS,
     CORE_SUBDIR,
     GEN_SUBDIR,
@@ -159,6 +160,8 @@ def cmd_update(argv: List[str]) -> int:
             shutil.copy2(_cache_whatsnew, core_dir / "whatsnew.toml")
     else:
         copy_results = {d: "dry_run" for d in COPY_DIRS}
+        for item in COPY_ARCHITECTURE_ITEMS:
+            copy_results[f"architecture/{item}"] = "dry_run"
     actions["core_update"] = copy_results
     for name, action in copy_results.items():
         ui.file_action(f".core/{name}/", action)
@@ -469,14 +472,14 @@ def _config_readme_content() -> str:
         "\n"
         "## Files\n"
         "\n"
-        "- `core.toml` — project settings (system name, slug, kit references)\n"
-        "- `artifacts.toml` — artifacts registry (systems, ignore patterns)\n"
-        "- `AGENTS.md` — custom agent navigation rules\n"
-        "- `SKILL.md` — custom skill extensions\n"
+        "- `core.toml` — project settings (kit references, version)\n"
+        "- `artifacts.toml` — artifacts registry (systems, artifacts, ignore patterns)\n"
+        "- `AGENTS.md` — custom agent navigation rules (add your own WHEN rules here)\n"
+        "- `SKILL.md` — custom skill extensions (add your own skill instructions here)\n"
         "\n"
         "## Directories\n"
         "\n"
-        "- `kits/{slug}/blueprints/` — editable copies of kit blueprints\n"
+        "- `kits/{slug}/` — kit files (artifacts/, codebase/, workflows/, scripts/, SKILL.md)\n"
         "- `rules/` — project rules (auto-configured or user-defined)\n"
         "\n"
         "**These files are never overwritten by `cpt update`.**\n"
