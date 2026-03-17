@@ -566,6 +566,85 @@ class TestUpdateKitLegacyMigration(unittest.TestCase):
             kit_entry = data["kits"]["legkit"]
             self.assertNotIn("resources", kit_entry)
 
+    def test_update_adds_new_manifest_resource_to_core_toml(self):
+        """update_kit with new resource in manifest → binding added to core.toml."""
+        from cypilot.commands.kit import update_kit
+
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            kit_src = _make_kit_source_with_manifest(td_path, "mykit")
+            adapter = _setup_legacy_project(td_path, "mykit")
+
+            # Pre-populate resources in core.toml (simulating existing install)
+            from cypilot.utils import toml_utils
+            config = adapter / "config"
+            with open(config / "core.toml", "rb") as f:
+                data = tomllib.load(f)
+            data["kits"]["mykit"]["resources"] = {
+                "adr_artifacts": {"path": "config/kits/mykit/artifacts/ADR"},
+                "constraints": {"path": "config/kits/mykit/constraints.toml"},
+                "skill": {"path": "config/kits/mykit/SKILL.md"},
+            }
+            toml_utils.dump(data, config / "core.toml")
+
+            # Add a NEW resource to the manifest (simulating kit version upgrade)
+            _write_manifest(kit_src, """\
+                [manifest]
+                version = "1.0"
+                root = "{cypilot_path}/config/kits/{slug}"
+                user_modifiable = false
+
+                [[resources]]
+                id = "adr_artifacts"
+                source = "artifacts/ADR"
+                default_path = "artifacts/ADR"
+                type = "directory"
+                user_modifiable = false
+
+                [[resources]]
+                id = "constraints"
+                source = "constraints.toml"
+                default_path = "constraints.toml"
+                type = "file"
+                user_modifiable = false
+
+                [[resources]]
+                id = "skill"
+                source = "SKILL.md"
+                default_path = "SKILL.md"
+                type = "file"
+                user_modifiable = false
+
+                [[resources]]
+                id = "new_workflow"
+                source = "new_resource.md"
+                default_path = "workflows/new_workflow.md"
+                type = "file"
+                user_modifiable = false
+            """)
+
+            # Bump version to trigger update
+            toml_utils.dump({"version": "2.1", "slug": "mykit"}, kit_src / "conf.toml")
+
+            update_kit(
+                "mykit", kit_src, adapter,
+                interactive=False, auto_approve=True,
+            )
+
+            # Check that NEW resource was added to core.toml
+            with open(config / "core.toml", "rb") as f:
+                data = tomllib.load(f)
+
+            kit_entry = data["kits"]["mykit"]
+            self.assertIn("resources", kit_entry)
+            # Existing bindings preserved
+            self.assertIn("adr_artifacts", kit_entry["resources"])
+            self.assertIn("constraints", kit_entry["resources"])
+            self.assertIn("skill", kit_entry["resources"])
+            # NEW binding added
+            self.assertIn("new_workflow", kit_entry["resources"])
+            self.assertIn("workflows/new_workflow.md", kit_entry["resources"]["new_workflow"]["path"])
+
 
 if __name__ == "__main__":
     unittest.main()
