@@ -1402,6 +1402,7 @@ def cmd_generate_agents(argv: List[str]) -> int:
         # Use project_root.parent as trusted root to allow cross-repo includes
         # (e.g. ../sibling-repo/...) within the same workspace.
         workspace_root = project_root.parent.resolve()
+        has_v2_errors = False
         resolved_layers = []
         for layer in layers:
             if (
@@ -1417,10 +1418,13 @@ def cmd_generate_agents(argv: List[str]) -> int:
                     resolved_layer = dataclasses.replace(layer, manifest=resolved_manifest)
                     resolved_layers.append(resolved_layer)
                 except ValueError as exc:
-                    sys.stderr.write(f"WARNING: failed to resolve includes for {layer.path}: {exc}\n")
+                    sys.stderr.write(f"ERROR: failed to resolve includes for {layer.path}: {exc}\n")
+                    has_v2_errors = True
                     resolved_layers.append(layer)
             else:
                 resolved_layers.append(layer)
+        if has_v2_errors:
+            return 1
         # @cpt-end:cpt-cypilot-flow-project-extensibility-generate-with-multi-layer:p1:inst-step3-5-resolve-includes
 
         # Step 4: Handle --discover flag: scan dirs and populate manifest.toml
@@ -1428,11 +1432,13 @@ def cmd_generate_agents(argv: List[str]) -> int:
         if getattr(args, "discover", False):
             discovered = discover_components(project_root)
             manifest_out = cypilot_root / "config" / "manifest.toml"
-            write_discovered_manifest(discovered, manifest_out)
-            sys.stderr.write(f"INFO: wrote discovered manifest to {manifest_out}\n")
+            if not args.dry_run:
+                write_discovered_manifest(discovered, manifest_out)
+                sys.stderr.write(f"INFO: wrote discovered manifest to {manifest_out}\n")
             # Re-run discovery after writing
             layers = _discover_layers(project_root, cypilot_root)
             resolved_layers = []
+            has_v2_errors = False
             for layer in layers:
                 if (
                     layer.state == _ManifestLayerState.LOADED
@@ -1447,10 +1453,13 @@ def cmd_generate_agents(argv: List[str]) -> int:
                         resolved_layer = _dc.replace(layer, manifest=resolved_manifest)
                         resolved_layers.append(resolved_layer)
                     except ValueError as exc:
-                        sys.stderr.write(f"WARNING: failed to resolve includes for {layer.path}: {exc}\n")
+                        sys.stderr.write(f"ERROR: failed to resolve includes for {layer.path}: {exc}\n")
+                        has_v2_errors = True
                         resolved_layers.append(layer)
                 else:
                     resolved_layers.append(layer)
+            if has_v2_errors:
+                return 1
         # @cpt-end:cpt-cypilot-flow-project-extensibility-generate-with-multi-layer:p1:inst-discover-flag
 
         # Step 5: Merge components from all layers
@@ -1482,10 +1491,45 @@ def cmd_generate_agents(argv: List[str]) -> int:
 
         # Step 8: Generate for each target agent using manifest v2 pipeline
         # @cpt-begin:cpt-cypilot-flow-project-extensibility-generate-with-multi-layer:p1:inst-step7-translate
+
+        # Preview pass — compute what would change
+        preview_v2_create = 0
+        preview_v2_update = 0
+        for target in agents_to_process:
+            pr_a = generate_manifest_agents(merged.agents, target, project_root, dry_run=True)
+            pr_s = generate_manifest_skills(merged.skills, target, project_root, dry_run=True)
+            preview_v2_create += len(pr_a.get("created", [])) + len(pr_s.get("created", []))
+            preview_v2_update += len(pr_a.get("updated", [])) + len(pr_s.get("updated", []))
+
+        if args.dry_run:
+            # Build and show dry-run result then return
+            dry_results: Dict[str, Any] = {}
+            for target in agents_to_process:
+                a = generate_manifest_agents(merged.agents, target, project_root, dry_run=True, variables=variables)
+                s = generate_manifest_skills(merged.skills, target, project_root, dry_run=True, variables=variables)
+                dry_results[target] = {"status": "PASS", "agent": target, "manifest_v2": True, "translated_agents": len(merged.agents), "skills": s, "v2_agents": a, "workflows": {"created": [], "updated": [], "unchanged": [], "renamed": [], "deleted": [], "counts": {}}}
+            dr = _build_result(dry_results, agents_to_process, project_root, cypilot_root, cfg_path, copy_report, dry_run=True)
+            dr["manifest_v2"] = True
+            ui.result(dr, human_fn=lambda d: _human_generate_agents_ok(d, agents_to_process, dry_results, dry_run=True))
+            return 0
+
+        if preview_v2_create == 0 and preview_v2_update == 0:
+            ui.info("No changes needed — agent files are up to date.")
+        else:
+            from ..utils.ui import is_json_mode
+            if not is_json_mode():
+                auto_approve = getattr(args, "yes", False)
+                if not auto_approve:
+                    # show count and ask
+                    sys.stdout.write(f"Will create {preview_v2_create} file(s), update {preview_v2_update} file(s). Continue? [y/N] ")
+                    sys.stdout.flush()
+                    answer = sys.stdin.readline().strip().lower()
+                    if answer not in ("y", "yes"):
+                        ui.info("Aborted.")
+                        return 0
+
         has_errors = False
         results: Dict[str, Any] = {}
-        v2_agents_result: Dict[str, Any] = {"created": [], "updated": [], "outputs": []}
-        v2_skills_result: Dict[str, Any] = {"created": [], "updated": [], "outputs": []}
 
         for target in agents_to_process:
             # Generate agent files from merged agents (manifest v2 pipeline)
@@ -1494,10 +1538,8 @@ def cmd_generate_agents(argv: List[str]) -> int:
                 target,
                 project_root,
                 args.dry_run,
+                variables=variables,
             )
-            v2_agents_result["created"].extend(agents_result.get("created", []))
-            v2_agents_result["updated"].extend(agents_result.get("updated", []))
-            v2_agents_result["outputs"].extend(agents_result.get("outputs", []))
 
             # Generate skill files from merged skills
             skills_result = generate_manifest_skills(
@@ -1505,10 +1547,8 @@ def cmd_generate_agents(argv: List[str]) -> int:
                 target,
                 project_root,
                 args.dry_run,
+                variables=variables,
             )
-            v2_skills_result["created"].extend(skills_result.get("created", []))
-            v2_skills_result["updated"].extend(skills_result.get("updated", []))
-            v2_skills_result["outputs"].extend(skills_result.get("outputs", []))
 
             results[target] = {
                 "status": "PASS",
@@ -1516,7 +1556,7 @@ def cmd_generate_agents(argv: List[str]) -> int:
                 "manifest_v2": True,
                 "translated_agents": len(merged.agents),
                 "skills": skills_result,
-                "v2_agents": v2_agents_result,
+                "v2_agents": agents_result,
                 "workflows": {"created": [], "updated": [], "unchanged": [], "renamed": [], "deleted": [], "counts": {}},
             }
         # @cpt-end:cpt-cypilot-flow-project-extensibility-generate-with-multi-layer:p1:inst-step7-translate
@@ -1530,8 +1570,8 @@ def cmd_generate_agents(argv: List[str]) -> int:
                 results[agent]["workflows"] = legacy_result.get("workflows", {})
                 legacy_skills = legacy_result.get("skills", {})
                 # Only use legacy skills if no v2 skills were generated for this agent
-                v2_skill_ids = {e.get("path", "") for e in v2_skills_result.get("outputs", [])}
-                if not any(target in str(sk_path) for sk_path in v2_skill_ids):
+                v2_skill_ids = {e.get("path", "") for e in results[agent].get("skills", {}).get("outputs", [])}
+                if not any(agent in str(sk_path) for sk_path in v2_skill_ids):
                     results[agent]["legacy_skills"] = legacy_skills
                 if legacy_result.get("status") != "PASS":
                     has_errors = True
@@ -1565,8 +1605,9 @@ def cmd_generate_agents(argv: List[str]) -> int:
     if getattr(args, "discover", False):
         discovered = discover_components(project_root)
         manifest_out = cypilot_root / "config" / "manifest.toml"
-        write_discovered_manifest(discovered, manifest_out)
-        sys.stderr.write(f"INFO: wrote discovered manifest to {manifest_out}\n")
+        if not args.dry_run:
+            write_discovered_manifest(discovered, manifest_out)
+            sys.stderr.write(f"INFO: wrote discovered manifest to {manifest_out}\n")
 
     # Step 1: Dry run to preview changes
     # @cpt-begin:cpt-cypilot-flow-agent-integration-generate:p1:inst-for-each-agent
@@ -2013,6 +2054,7 @@ def generate_manifest_skills(
     target: str,
     project_root: Path,
     dry_run: bool,
+    variables: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Generate skill files from merged [[skills]] manifest entries.
 
@@ -2092,6 +2134,11 @@ def generate_manifest_skills(
         if skill.append:
             content = content.rstrip("\n") + "\n" + skill.append
 
+        # Apply layer variable substitution
+        if variables:
+            for k, v in variables.items():
+                content = content.replace(f"{{{k}}}", v)
+
         # Step 1.3: Determine output path using agent-native conventions
         rel_out = path_template.replace("{id}", skill_id)
         out_path = project_root / rel_out
@@ -2124,6 +2171,7 @@ def generate_manifest_agents(
     target: str,
     project_root: Path,
     dry_run: bool,
+    variables: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Generate agent files from merged [[agents]] manifest entries.
 
@@ -2160,7 +2208,14 @@ def generate_manifest_agents(
 
         # Step 1.1: Call translate_agent_schema to get frontmatter dict + body_prefix
         # @cpt-begin:cpt-cypilot-algo-project-extensibility-generate-agents:p1:inst-translate-schema
-        translated = translate_agent_schema(agent, target)
+        try:
+            translated = translate_agent_schema(agent, target)
+        except ValueError as exc:
+            sys.stderr.write(
+                f"WARNING: agent '{agent_id}' schema translation failed for target '{target}': {exc}, skipping\n"
+            )
+            result.setdefault("errors", []).append({"agent": agent_id, "error": str(exc)})
+            continue
         # @cpt-end:cpt-cypilot-algo-project-extensibility-generate-agents:p1:inst-translate-schema
 
         # Step 1.2: IF skip=True → skip agent, log skip reason, continue
@@ -2217,6 +2272,32 @@ def generate_manifest_agents(
             )
             continue
 
+        # Special path for OpenAI/Codex: emit TOML format
+        if target == "openai":
+            sandbox_mode = translated.get("sandbox_mode", "workspace-write")
+            dev_instructions = translated.get("developer_instructions", agent.description or "")
+            model_str = translated.get("model", "")
+            toml_lines = [f"[agents.{agent_id.replace('-', '_')}]"]
+            escaped_desc = (agent.description or "").replace("\\", "\\\\").replace('"', '\\"')
+            toml_lines.append(f'description = "{escaped_desc}"')
+            toml_lines.append(f'sandbox_mode = "{sandbox_mode}"')
+            if model_str and model_str != "inherit":
+                toml_lines.append(f'model = "{model_str}"')
+            toml_lines.append('developer_instructions = """')
+            toml_lines.append(dev_instructions)
+            toml_lines.append('"""')
+            if agent.append:
+                toml_lines.append(agent.append)
+            content = "\n".join(toml_lines) + "\n"
+            if variables:
+                for k, v in variables.items():
+                    content = content.replace(f"{{{k}}}", v)
+            # Use .toml extension for codex output
+            rel_out = path_template.replace("{id}", agent_id).replace(".md", ".toml")
+            out_path = project_root / rel_out
+            _write_or_skip(out_path, content, result, project_root, dry_run)
+            continue
+
         frontmatter_lines: List[str] = ["---"]
         frontmatter_lines.append(f"name: {agent.id}")
         escaped = agent.description.replace("\\", "\\\\").replace('"', '\\"')
@@ -2231,6 +2312,11 @@ def generate_manifest_agents(
         # Apply accumulated section appends (from merge_component_entry)
         if agent.append:
             content = content.rstrip("\n") + "\n" + agent.append
+
+        # Apply layer variable substitution
+        if variables:
+            for k, v in variables.items():
+                content = content.replace(f"{{{k}}}", v)
         # @cpt-end:cpt-cypilot-algo-project-extensibility-generate-agents:p1:inst-assemble-agent-file
 
         # Step 1.5: Determine output path using agent-native conventions
@@ -2492,7 +2578,9 @@ def write_discovered_manifest(
 
     Generates a v2.0 manifest.toml at *manifest_path* from the *discovered*
     components dict (as returned by ``discover_components()``).  If the file
-    already exists it is overwritten.
+    already exists, reads existing ``id`` values and only appends entries
+    whose IDs are not already present.  If all discovered entries are already
+    present, the file is not modified.
 
     The ``manifest_path``'s parent directory is created if it does not exist.
 
@@ -2503,13 +2591,55 @@ def write_discovered_manifest(
     """
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # If the file already exists, collect existing IDs via simple string scan
+    # and only write entries whose IDs are not already present.
+    existing_ids: Set[str] = set()
+    existing_content: Optional[str] = None
+    if manifest_path.is_file():
+        try:
+            existing_content = manifest_path.read_text(encoding="utf-8")
+        except Exception:
+            existing_content = None
+        if existing_content is not None:
+            import re as _re
+            for m in _re.finditer(r'^id\s*=\s*"([^"]+)"', existing_content, _re.MULTILINE):
+                existing_ids.add(m.group(1))
+
+    section_order = ["agents", "skills", "workflows"]
+
+    if existing_content is not None:
+        # Append-only mode: only write new entries
+        new_lines: List[str] = []
+        for section in section_order:
+            entries = discovered.get(section, [])
+            for entry in entries:
+                if entry["id"] in existing_ids:
+                    continue
+                new_lines.append(f'[[{section}]]')
+                new_lines.append(f'id = "{entry["id"]}"')
+                if entry.get("description"):
+                    desc = entry["description"].replace('"', '\\"')
+                    new_lines.append(f'description = "{desc}"')
+                if entry.get("source"):
+                    src = entry["source"].replace('"', '\\"')
+                    new_lines.append(f'source = "{src}"')
+                new_lines.append('')
+
+        if not new_lines:
+            # All discovered entries already present — skip write
+            return
+
+        appended = existing_content.rstrip("\n") + "\n\n# New entries appended by --discover\n" + "\n".join(new_lines)
+        manifest_path.write_text(appended, encoding="utf-8")
+        return
+
+    # Fresh write
     lines: List[str] = [
         '[manifest]',
         'version = "2.0"',
         '',
     ]
 
-    section_order = ["agents", "skills", "workflows"]
     for section in section_order:
         entries = discovered.get(section, [])
         for entry in entries:

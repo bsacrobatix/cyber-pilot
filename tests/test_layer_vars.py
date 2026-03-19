@@ -1,8 +1,5 @@
 """
 Tests for add_layer_variables() and assemble_component() in resolve_vars.py.
-
-@cpt-algo:cpt-cypilot-algo-project-extensibility-resolve-layer-variables:p1
-@cpt-algo:cpt-cypilot-algo-project-extensibility-deterministic-assembly:p1
 """
 
 from __future__ import annotations

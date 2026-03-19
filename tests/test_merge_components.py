@@ -1,8 +1,5 @@
 """
 Tests for merge_components() and apply_section_appends() in manifest.py.
-
-@cpt-algo:cpt-cypilot-algo-project-extensibility-merge-components:p1
-@cpt-algo:cpt-cypilot-algo-project-extensibility-section-appending:p1
 """
 
 from __future__ import annotations

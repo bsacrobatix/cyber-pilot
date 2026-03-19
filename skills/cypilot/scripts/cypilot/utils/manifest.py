@@ -436,10 +436,10 @@ def resolve_includes(
     # have been accumulated from previously-processed includees so that a
     # collision *between two includees* remains an error.
     includer_ids: set = (
-        {c.id for c in manifest.agents}
-        | {c.id for c in manifest.skills}
-        | {c.id for c in manifest.workflows}
-        | {c.id for c in manifest.rules}
+        {("agents", c.id) for c in manifest.agents}
+        | {("skills", c.id) for c in manifest.skills}
+        | {("workflows", c.id) for c in manifest.workflows}
+        | {("rules", c.id) for c in manifest.rules}
     )
     accumulated_includee_ids: set = set()
 
@@ -494,10 +494,10 @@ def resolve_includes(
 
         # @cpt-begin:cpt-cypilot-algo-project-extensibility-resolve-includes:p1:inst-step2.7-collision-check
         included_ids: set = (
-            {c.id for c in rewritten_agents}
-            | {c.id for c in rewritten_skills}
-            | {c.id for c in rewritten_workflows}
-            | {c.id for c in rewritten_rules}
+            {("agents", c.id) for c in rewritten_agents}
+            | {("skills", c.id) for c in rewritten_skills}
+            | {("workflows", c.id) for c in rewritten_workflows}
+            | {("rules", c.id) for c in rewritten_rules}
         )
         # Collisions between two different includees are always an error.
         inter_includee_collisions = accumulated_includee_ids & included_ids
@@ -510,10 +510,14 @@ def resolve_includes(
         # silently — filter the shadowed components out of the included set.
         shadowed_by_includer = includer_ids & included_ids
         if shadowed_by_includer:
-            rewritten_agents = [c for c in rewritten_agents if c.id not in shadowed_by_includer]
-            rewritten_skills = [c for c in rewritten_skills if c.id not in shadowed_by_includer]
-            rewritten_workflows = [c for c in rewritten_workflows if c.id not in shadowed_by_includer]
-            rewritten_rules = [c for c in rewritten_rules if c.id not in shadowed_by_includer]
+            shadowed_agent_ids = {cid for sec, cid in shadowed_by_includer if sec == "agents"}
+            shadowed_skill_ids = {cid for sec, cid in shadowed_by_includer if sec == "skills"}
+            shadowed_workflow_ids = {cid for sec, cid in shadowed_by_includer if sec == "workflows"}
+            shadowed_rule_ids = {cid for sec, cid in shadowed_by_includer if sec == "rules"}
+            rewritten_agents = [c for c in rewritten_agents if c.id not in shadowed_agent_ids]
+            rewritten_skills = [c for c in rewritten_skills if c.id not in shadowed_skill_ids]
+            rewritten_workflows = [c for c in rewritten_workflows if c.id not in shadowed_workflow_ids]
+            rewritten_rules = [c for c in rewritten_rules if c.id not in shadowed_rule_ids]
         # @cpt-end:cpt-cypilot-algo-project-extensibility-resolve-includes:p1:inst-step2.7-collision-check
 
         # @cpt-begin:cpt-cypilot-algo-project-extensibility-resolve-includes:p1:inst-step2.8-merge
