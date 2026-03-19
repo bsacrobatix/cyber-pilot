@@ -193,9 +193,9 @@ def cmd_generate_agents(argv):
     - Test passthrough model strings (not just inherit/fast)
     - Test agents.toml fallback when no [[agents]] in manifest
     - Test v2.0 preferred over agents.toml when both exist
-11. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_integration_compat.py -v`
+11. Run tests: `python3 -m pytest tests/test_integration_compat.py -v`
 12. Run ALL previous test files to verify no regressions:
-    `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_manifest_v2.py tests/test_layer_discovery.py tests/test_manifest_includes.py tests/test_merge_components.py tests/test_schema_translation.py tests/test_layer_vars.py tests/test_provenance_discovery.py tests/test_integration_compat.py -v`
+    `python3 -m pytest tests/test_manifest_v2.py tests/test_layer_discovery.py tests/test_manifest_includes.py tests/test_merge_components.py tests/test_schema_translation.py tests/test_layer_vars.py tests/test_provenance_discovery.py tests/test_integration_compat.py -v`
 13. Self-verify against acceptance criteria
 
 ## Acceptance Criteria

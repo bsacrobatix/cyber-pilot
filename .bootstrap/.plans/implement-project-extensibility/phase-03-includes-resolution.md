@@ -116,7 +116,7 @@ Touches: manifest.py, agents.py
    - Test ID collision between includer and includee
    - Test prompt_file/source path rewriting
    - Test empty includes array (no-op)
-6. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_manifest_includes.py -v`
+6. Run tests: `python3 -m pytest tests/test_manifest_includes.py -v`
 7. Self-verify against acceptance criteria below
 
 ## Acceptance Criteria

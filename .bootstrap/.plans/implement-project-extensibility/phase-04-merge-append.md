@@ -112,7 +112,7 @@ Steps:
    - Test provenance records correctly which layer won
    - Test section appending with content from multiple layers
    - Test section appending with no appends (base content unchanged)
-9. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_merge_components.py -v`
+9. Run tests: `python3 -m pytest tests/test_merge_components.py -v`
 10. Self-verify against acceptance criteria
 
 ## Acceptance Criteria

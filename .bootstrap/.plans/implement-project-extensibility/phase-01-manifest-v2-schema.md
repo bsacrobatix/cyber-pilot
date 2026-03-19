@@ -186,7 +186,7 @@ Existing functions: `load_manifest()`, `validate_manifest()`, `resolve_resource_
    - Test [[hooks]] and [[permissions]] are accepted and ignored
    - Test parse error handling with clear error messages
 6. Save a summary of the new types to `out/phase-01-types.md` (listing all new dataclass names and their fields) for later phases to reference
-7. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_manifest_v2.py -v`
+7. Run tests: `python3 -m pytest tests/test_manifest_v2.py -v`
 8. Self-verify against acceptance criteria below
 
 ## Acceptance Criteria

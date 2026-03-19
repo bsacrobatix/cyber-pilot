@@ -129,7 +129,7 @@ Core layer is implicit (built from `_default_agents_config()` in agents.py) and 
    - Test master repo boundary detection (CLAUDE.md + skills/ pattern)
    - Test master repo boundary detection (.git/ pattern)
    - Test walk-up stops at master repo root
-7. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_layer_discovery.py -v`
+7. Run tests: `python3 -m pytest tests/test_layer_discovery.py -v`
 8. Self-verify against acceptance criteria below
 
 ## Acceptance Criteria

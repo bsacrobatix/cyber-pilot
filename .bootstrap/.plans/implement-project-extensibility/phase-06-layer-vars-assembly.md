@@ -132,7 +132,7 @@ Steps:
    - Test deterministic assembly (same inputs → same output)
    - Test variable substitution in assembled content
    - Test assembly with section appends
-7. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_layer_vars.py -v`
+7. Run tests: `python3 -m pytest tests/test_layer_vars.py -v`
 8. Self-verify against acceptance criteria
 
 ## Acceptance Criteria

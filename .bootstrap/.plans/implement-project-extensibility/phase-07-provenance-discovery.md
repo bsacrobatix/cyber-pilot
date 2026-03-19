@@ -150,7 +150,7 @@ JSON (--show-layers --json):
    - Test component discovery finds skills in .claude/skills/
    - Test component discovery with empty directories
    - Test manifest writing from discovered components
-9. Run tests: `cd /Users/bradsmith/code/cyber-pilot && python3.13 -m pytest tests/test_provenance_discovery.py -v`
+9. Run tests: `python3 -m pytest tests/test_provenance_discovery.py -v`
 10. Self-verify against acceptance criteria
 
 ## Acceptance Criteria
