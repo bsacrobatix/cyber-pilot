@@ -73,6 +73,12 @@ Each kit is a file package: a collection of artifact definitions (rules, checkli
 
 **Design Response**: Two universal Markdown workflows (generate and analyze) with a common execution protocol. Workflows are loaded and interpreted by AI agents, not by the tool itself. The tool provides deterministic commands that workflows invoke.
 
+##### Execution Plans
+
+- [ ] `p1` - `cpt-cypilot-fr-core-execution-plans`
+
+**Design Response**: A third universal Markdown workflow (`plan.md`) that extends the generate/analyze system with phase-based task decomposition. The plan workflow reads all kit dependencies (template, rules, checklist, constraints) for the target artifact, decomposes the task into phases using type-specific strategies (template sections for generation, checklist categories for analysis, CDSL blocks for implementation), and "compiles" each phase into a self-contained phase file. Phase files are compiled prompts: all rules, constraints, and context are pre-resolved and inlined so the file requires zero external references. Phase files follow a strict template (`requirements/plan-template.md`) with TOML frontmatter, inlined rules, binary acceptance criteria, and a completion report format. Decomposition strategies are defined in `requirements/plan-decomposition.md`. Plans are stored in `{cypilot_path}/.plans/{task-slug}/` (git-ignored) with a `plan.toml` manifest tracking phase lifecycle. No Python code or CLI commands — purely prompt-level, agent-interpreted. Budget enforcement: ≤500 lines target, ≤1000 max per phase file.
+
 ##### Multi-Agent Integration
 
 - [x] `p1` - `cpt-cypilot-fr-core-agents`
@@ -83,7 +89,7 @@ Each kit is a file package: a collection of artifact definitions (rules, checkli
 
 - [x] `p1` - `cpt-cypilot-fr-core-kits`
 
-**Design Response**: Kit Manager handles kit lifecycle: installation from GitHub repositories (`cpt kit install --github <owner/repo>`), copying kit files into the kit's config directory, registration in `core.toml` (with config path, GitHub source, and version), and version tracking via GitHub tags. Each kit is a collection of ready-to-use files (rules, templates, checklists, examples, constraints, workflows, scripts). Kit updates download the new version from GitHub and use file-level diff: each file in the new version is compared against the user's installed copy, and all changed files are presented as unified diffs with interactive accept/decline/accept-all/decline-all/modify prompts. `cpt kit move-config <slug>` relocates a kit's config output directory. Cypilot core bundles no kits — all kits are external GitHub packages. A plugin system for custom CLI subcommands and hooks is planned for p2.
+**Design Response**: Kit Manager handles kit lifecycle: installation from GitHub repositories (`cpt kit install --github <owner/repo>`), copying kit files into the kit's config directory, registration in `core.toml` (with config path, GitHub source, and version), and version tracking via GitHub tags. Each kit is a collection of ready-to-use files (rules, templates, checklists, examples, constraints, workflows, scripts). Kit updates download the new version from GitHub and display version-specific release notes from `whatsnew.toml` (if present) before the interactive file-level diff — showing all entries between the installed version and the new version, allowing users to review changes before proceeding. File-level diff compares each file in the new version against the user's installed copy, and all changed files are presented as unified diffs with interactive accept/decline/accept-all/decline-all/modify prompts. `cpt kit move-config <slug>` relocates a kit's config output directory. Cypilot core bundles no kits — all kits are external GitHub packages. A plugin system for custom CLI subcommands and hooks is planned for p2.
 
 ##### Declarative Kit Installation Manifest
 
@@ -214,6 +220,19 @@ user_modifiable = false
 
 **Design Response**: The `spec-coverage` command reuses the Traceability Engine's code scanning infrastructure to measure two metrics: **coverage percentage** (ratio of lines within `@cpt-begin`/`@cpt-end` blocks to total effective lines) and **granularity score** (instruction density — ideally 1 block marker per 10 lines). Output mirrors `coverage.py` JSON format with per-file and summary statistics. Threshold enforcement via `--min-coverage` and `--min-granularity` flags enables CI gating. Implementation lives in `skills/.../utils/coverage.py` (scanner + metrics) and `skills/.../commands/spec_coverage.py` (CLI entry point).
 
+##### Multi-Repo Workspace Federation
+
+- [x] `p1` - `cpt-cypilot-fr-core-workspace`
+- [x] `p1` - `cpt-cypilot-fr-core-traceability`
+- [x] `p1` - `cpt-cypilot-fr-core-workspace-git-sources`
+- [x] `p1` - `cpt-cypilot-fr-core-workspace-cross-repo-editing`
+
+**Design Response**: Workspace federation enables cross-repo artifact traceability without merging adapters. The architecture introduces five new data types — `WorkspaceConfig`, `SourceEntry`, `TraceabilityConfig`, `ResolveConfig`, `NamespaceRule` — and two runtime types — `WorkspaceContext` (wraps `CypilotContext`) and `SourceContext`. Context loading gains a workspace upgrade step: after building the primary `CypilotContext`, `WorkspaceContext.load()` discovers workspace config via the core.toml `workspace` key (string path or inline dict). Each named source is resolved to a `SourceContext` with reachability status. `resolve_artifact_path` returns `Optional[Path]` — `None` when a source is explicitly set but unreachable, preventing silent fallback to local paths. Two traceability settings (`cross_repo`, `resolve_remote_ids`) independently control path resolution and remote ID expansion. CLI commands (`workspace-init`, `workspace-add` with `--inline` flag for inline mode, `workspace-info`, `workspace-sync`) manage workspace config, while `validate --local-only` restricts to single-repo mode and `list-ids --source` filters by source. Scan failures emit stderr warnings rather than silently swallowing exceptions.
+
+**Git URL sources**: Standalone workspace files (`.cypilot-workspace.toml`) gain Git URL source support alongside local paths. `SourceEntry` extends with optional `url` and `branch` fields. A new `ResolveConfig` (with `workdir`, `namespace_rules`) and `NamespaceRule` (host pattern → `{org}/{repo}` path template) govern how URLs map to local directory paths. The resolution algorithm (`cpt-cypilot-algo-workspace-resolve-git-url`) parses the URL, applies namespace templating, and either returns the path to an existing local clone or performs a fresh `git clone` via `subprocess` (stdlib-only). Existing repos are never fetched during resolution — use `workspace-sync` to explicitly update worktrees. Inline workspace definitions reject `url` fields — inline mode stays local-paths-only. `path` and `url` are mutually exclusive (enforced by CLI via `argparse`).
+
+**Cross-repo editing**: When editing files in a remote source, the system applies the remote source's own adapter context rather than the primary repo's. `SourceContext` gains a lazy-loaded `adapter_context` field holding the source's full `CypilotContext`. Three algorithms drive this: `cpt-cypilot-algo-workspace-resolve-git-url` takes a `SourceEntry`, `ResolveConfig`, and workspace parent path, parses the URL, applies namespace templating, and returns `Optional[Path]` to a local clone (None on unparseable URL, path traversal, or clone failure). `cpt-cypilot-algo-workspace-resolve-adapter-context` takes a `SourceContext` and returns `Optional[CypilotContext]` — loads a source's adapter (config, kits, templates, rules, constraints) on first access with result cached on `SourceContext` (None when unreachable, missing adapter dir, or load failure). `cpt-cypilot-algo-workspace-determine-target` takes a target file path and `WorkspaceContext`, matches the path to a source via longest-prefix match, and returns `(Optional[SourceContext], CypilotContext)` — `(None, primary)` when no source matches, `(sc, primary)` when matched but no adapter. When a remote source has no Cypilot adapter, the system falls back to the primary repo's adapter for that source. The primary repo's adapter remains active for workspace-level operations and its own files.
+
 #### NFR Allocation
 
 | NFR ID | NFR Summary | Allocated To | Design Response | Verification Approach |
@@ -246,6 +265,10 @@ The following architecture decision records (ADRs) drive the design:
 - `cpt-cypilot-adr-git-style-conflict-markers` — git-style conflict markers for interactive merge
 - `cpt-cypilot-adr-extract-sdlc-kit` — extract SDLC kit to separate GitHub repository
 - `cpt-cypilot-adr-remove-system-from-core-toml` — remove `[system]` from core.toml; artifacts.toml is single source for system identity
+- `cpt-cypilot-adr-prefer-cpt-cli-for-agents` — prefer `cpt` CLI over direct script invocation in agent prompts; graceful fallback to raw Python path
+- `cpt-cypilot-adr-ai-cli-extensibility-subagents` — generate isolated subagent definitions (codegen, PR review) for tools that support them; Claude Code as canonical format with per-tool adaptation
+- `cpt-cypilot-adr-execution-plans` — automated execution plans with compiled phase files for context-bounded agent tasks; decomposition by template sections, checklist categories, or CDSL blocks
+- `cpt-cypilot-adr-unified-manifest-hierarchy` — unified manifest.toml v2.0 with six-layer walk-up discovery for project-level extensibility
 
 ### 1.3 Architecture Layers
 
@@ -405,6 +428,7 @@ Validation rules cannot be bypassed or weakened in STRICT mode. The deterministi
 - **CDSL**: [CDSL.md](./specs/CDSL.md) — behavioral specification language syntax
 - **Artifacts registry**: [artifacts-registry.md](./specs/artifacts-registry.md) — artifacts.toml structure and agent operations
 - **System prompts**: [sysprompts.md](./specs/sysprompts.md) — `{cypilot_path}/config/sysprompts/` and `config/AGENTS.md` format
+- **Workspace**: core architecture in [DESIGN.md §1.2](#multi-repo-workspace-federation); implementation details in [features/workspace.md](./features/workspace.md) — workspace config, source resolution, algorithms (`resolve-git-url`, `resolve-adapter-context`, `determine-target`, `infer-role`)
 
 **Core Entities**:
 
@@ -421,6 +445,13 @@ Validation rules cannot be bypassed or weakened in STRICT mode. The deterministi
 | Workflow | A Markdown file with frontmatter, phases, and validation criteria | `{cypilot_path}/.core/workflows/` |
 | Manifest | Optional declarative installation config (`manifest.toml`) declaring kit resources, their identifiers, default paths, types, and user-modifiability flags. Governs installation and update when present; absent → legacy copy behavior | Kit source root `manifest.toml`, validated against `kit-manifest.schema.json` |
 | ResourceBinding | A resolved mapping from a manifest resource identifier to its actual filesystem path in the project. Stored in `core.toml` under `[kits.{slug}.resources]` | `{cypilot_path}/config/core.toml` → kits.{slug}.resources |
+| WorkspaceConfig | Parsed workspace configuration with version, sources, traceability settings, and optional git URL resolve config. Can be standalone (`.cypilot-workspace.toml`) or inline (`config/core.toml` `[workspace]`) | `.cypilot-workspace.toml` or `config/core.toml` |
+| SourceEntry | A named source repo in the workspace with path, role (`artifacts`/`codebase`/`kits`/`full`), optional adapter, and optional Git URL + branch | `WorkspaceConfig.sources{}` |
+| TraceabilityConfig | Workspace-level traceability settings: `cross_repo` and `resolve_remote_ids` booleans controlling cross-repo ID resolution | `WorkspaceConfig.traceability` |
+| ResolveConfig | Workspace-level git URL resolution settings: workdir path and namespace rules for mapping hosts to local directory templates | `WorkspaceConfig.resolve` |
+| NamespaceRule | Maps a Git host (e.g. `gitlab.com`) to a local directory template (e.g. `{org}/{repo}`) for deterministic worktree placement | `ResolveConfig.namespace[]` |
+| SourceContext | Runtime context for a single workspace source: resolved path, adapter dir, loaded metadata, kits, reachability status | Built by context loader from `SourceEntry` |
+| WorkspaceContext | Multi-repo workspace runtime context wrapping a primary `CypilotContext` and remote `SourceContext` entries with traceability flags | Built by context loader when workspace config is found |
 
 **Relationships**:
 - System → Kit: each system is assigned to exactly one kit (by slug)
@@ -435,6 +466,13 @@ Validation rules cannot be bypassed or weakened in STRICT mode. The deterministi
 - Artifact → Identifier[]: each artifact contains zero or more ID definitions and references
 - Identifier → Identifier: cross-references between definitions and references across artifacts
 - Constraint → Identifier: constraints define which ID kinds are allowed/required per artifact kind
+- WorkspaceConfig → SourceEntry[]: a workspace contains one or more named sources
+- WorkspaceConfig → TraceabilityConfig: workspace has one traceability settings object
+- WorkspaceConfig → ResolveConfig: workspace optionally has git URL resolution config
+- ResolveConfig → NamespaceRule[]: resolve config contains zero or more host-to-template mappings
+- WorkspaceContext → CypilotContext: workspace wraps one primary context (the current repo)
+- WorkspaceContext → SourceContext[]: every SourceEntry produces a SourceContext; unreachable sources have `reachable=false` and `path=None` (never omitted)
+- SourceContext → CypilotContext: each reachable source lazily resolves its own adapter context; unreachable sources skip adapter resolution
 
 ### 3.2 Component Model
 
@@ -702,9 +740,8 @@ The following kits are external packages that can be installed and managed by th
 
 | Command | Description | Exit Code |
 |---------|-------------|-----------|
-| `validate --artifact <path>` | Validate single artifact | 0=PASS, 2=FAIL |
-| `validate` | Validate all registered artifacts | 0=PASS, 2=FAIL |
-| `list-ids [--kind K] [--pattern P]` | List IDs matching criteria | 0 |
+| `validate [--artifact <path>] [--local-only] [--source S]` | Validate artifacts (single or all); `--local-only` skips cross-repo workspace validation, `--source` targets a specific workspace source | 0=PASS, 2=FAIL |
+| `list-ids [--kind K] [--pattern P] [--source S]` | List IDs matching criteria; `--source` filters by workspace source | 0 |
 | `where-defined --id <id>` | Find where an ID is defined | 0=found, 2=not found |
 | `where-used --id <id>` | Find where an ID is referenced | 0 |
 | `get-content --id <id>` | Get content block for an ID | 0=found, 2=not found |
@@ -725,6 +762,10 @@ The following kits are external packages that can be installed and managed by th
 | `kit install` | Install a kit (copy files, register in core.toml) | 0 |
 | `kit update [--force]` | Update kit files (interactive: file-level diff; force: overwrite) | 0 |
 | `kit move-config <slug>` | Relocate a kit's config output directory | 0 |
+| `workspace-init [--root] [--output] [--inline] [--force] [--max-depth N] [--dry-run]` | Scan nested sub-dirs, generate workspace config | 0, 1=error |
+| `workspace-add --name N (--path P \| --url U) [--branch] [--role] [--adapter] [--inline] [--force]` | Add a source to workspace config | 0, 1=error, 2=invalid args |
+| `workspace-info` | Display workspace status and per-source details | 0, 1=error |
+| `workspace-sync [--source N] [--dry-run] [--force]` | Fetch and update Git URL sources | 0, 1=error, 2=all failed |
 
 **Kit Commands (SDLC) — EXTRACTED**:
 
@@ -850,18 +891,19 @@ sequenceDiagram
 
 **Description**: User initializes Cypilot in a project. The skill engine asks for install directory and agent selection. It defines a **root system** (name and slug derived from the project directory name), creates core configs (`core.toml` with root system, `artifacts.toml` with default autodetect rules), generates agent entry points, and sets up `{cypilot_path}/config/AGENTS.md` with default WHEN rules. After core setup, the tool prompts `Install SDLC kit? [a]ccept [d]ecline`. If accepted, the kit is downloaded from GitHub. If the kit source contains `manifest.toml`, the Kit Manager validates the manifest, reads declared resources, prompts the user for destination paths on `user_modifiable` resources, copies each resource to its resolved path, resolves template variables in kit files, and registers all resource bindings in `core.toml`. If no `manifest.toml` is present, files are copied to the default kit config directory. If declined, the user can install kits later via `cpt kit install`.
 
-**Root AGENTS.md injection**: During initialization (and verified on every CLI invocation), the engine ensures the project root `AGENTS.md` file contains a managed block that points agents to the Cypilot navigation entry:
+**Root AGENTS.md / CLAUDE.md injection**: During initialization (and verified on every CLI invocation), the engine ensures the project root `AGENTS.md` and `CLAUDE.md` files contain the same managed block with only the configured adapter path:
 
-```markdown
+````markdown
 <!-- @cpt:root-agents -->
-ALWAYS open and follow `{cypilot_path}/.gen/AGENTS.md` FIRST
-ALWAYS open and follow `{cypilot_path}/config/AGENTS.md` WHEN it exists
-<!-- @/cpt:root-agents -->
+```toml
+cypilot_path = ".bootstrap"
 ```
+<!-- @/cpt:root-agents -->
+````
 
-The block is inserted at the **beginning** of the file. If the file does not exist, it is created. The path inside the block reflects the actual install directory (e.g., `@/{cypilot_path}/config/AGENTS.md`). Content between the `<!-- @cpt:root-agents -->` and `<!-- @/cpt:root-agents -->` comment markers is fully managed by Cypilot — it is overwritten on every check, so manual edits inside the block are discarded.
+The block is inserted at the **beginning** of each file. If a file does not exist, it is created. The managed content is a TOML fence that declares only `cypilot_path`, and the path reflects the actual install directory. Content between the `<!-- @cpt:root-agents -->` and `<!-- @/cpt:root-agents -->` comment markers is fully managed by Cypilot — it is overwritten on every check, so manual edits inside the block are discarded.
 
-**Integrity invariant**: every Cypilot CLI command (not just `init`) verifies the root `AGENTS.md` block exists and is correct before proceeding. If the block is missing or the path is stale (e.g., install directory changed), the engine silently re-injects it. This guarantees that any agent opening the project will be routed to Cypilot regardless of how the IDE session started.
+**Integrity invariant**: every Cypilot CLI command (not just `init`) verifies the root `AGENTS.md` and `CLAUDE.md` blocks exist and are correct before proceeding. If a block is missing or the path is stale (e.g., install directory changed), the engine silently re-injects it. This guarantees that root agent files always expose the current `cypilot_path` without duplicating navigation rules.
 
 #### Artifact Validation
 
@@ -1006,6 +1048,151 @@ sequenceDiagram
 
 **Description**: ID resolution query scans all registered artifacts to find where an ID is defined. Used by agents for navigation and by the validator for cross-reference checking.
 
+#### Workspace Initialization
+
+**ID**: `cpt-cypilot-seq-workspace-init`
+
+**Use cases**: `cpt-cypilot-usecase-workspace-init`
+
+**Actors**: `cpt-cypilot-actor-user`, `cpt-cypilot-actor-cypilot-cli`
+
+```mermaid
+sequenceDiagram
+    User->>CLI Proxy: cpt workspace-init [--inline] [--max-depth N] [--force] [--dry-run]
+    CLI Proxy->>Skill Engine: workspace-init command
+    Skill Engine->>Skill Engine: find project root
+    Skill Engine->>Skill Engine: scan nested directories (up to max-depth)
+    loop each discovered directory
+        Skill Engine->>Skill Engine: check .git / AGENTS.md marker
+        alt is project directory
+            Skill Engine->>Skill Engine: detect adapter path
+            Skill Engine->>Skill Engine: infer role (codebase/artifacts/kits/full)
+            Skill Engine->>Skill Engine: add to discovered sources
+        else not project directory
+            Skill Engine->>Skill Engine: recurse into subdirectory
+        end
+    end
+    Skill Engine->>Skill Engine: check for existing workspace config conflicts
+    alt conflict found and no --force
+        Skill Engine-->>User: ERROR "workspace already exists, use --force"
+    else --dry-run
+        Skill Engine-->>User: preview of sources that would be written
+    else write config
+        alt --inline
+            Skill Engine->>Config Manager: write [workspace] to config/core.toml
+        else standalone
+            Skill Engine->>Config Manager: write .cypilot-workspace.toml
+        end
+        Skill Engine-->>User: JSON {status: OK, config_path, sources_count}
+    end
+```
+
+**Description**: Workspace initialization scans the project tree for nested repositories, infers source roles from directory structure, and writes a workspace configuration file. The `--inline` flag controls whether config is embedded in `core.toml` or written as a standalone file. The `--max-depth` flag limits recursion depth (default 3). Symlinks are skipped during scanning. Role inference (`cpt-cypilot-algo-workspace-infer-role`) checks for source directories (`src/`, `lib/`, `app/`, `pkg/`), documentation directories (`docs/`, `architecture/`, `requirements/`), and a `kits/` directory — repos with multiple capability types get role `full`; single-capability repos get the matching role; repos with no recognized directories default to `full`.
+
+#### Add Workspace Source
+
+**ID**: `cpt-cypilot-seq-workspace-add`
+
+**Use cases**: `cpt-cypilot-usecase-workspace-add`
+
+**Actors**: `cpt-cypilot-actor-user`, `cpt-cypilot-actor-cypilot-cli`
+
+```mermaid
+sequenceDiagram
+    User->>CLI Proxy: cpt workspace-add --name <name> --path <path>|--url <url> [--force]
+    CLI Proxy->>Skill Engine: workspace-add command
+    Skill Engine->>Skill Engine: find project root
+    Skill Engine->>Config Manager: locate workspace config (inline or standalone)
+    alt no workspace found
+        Skill Engine-->>User: ERROR "no workspace config, run workspace-init"
+    else workspace found
+        Skill Engine->>Skill Engine: check if source name already exists
+        alt collision and no --force
+            Skill Engine-->>User: ERROR "source already exists, use --force"
+        else add source
+            Skill Engine->>Config Manager: add/replace source entry
+            Config Manager->>Config Manager: write updated workspace config
+            Skill Engine-->>User: JSON {status: OK, action: added|replaced}
+        end
+    end
+```
+
+**Description**: Adds a local path or Git URL source to an existing workspace configuration. The command auto-detects whether the workspace uses inline or standalone config. Source name collisions require the `--force` flag to replace.
+
+#### Workspace Info
+
+**ID**: `cpt-cypilot-seq-workspace-info`
+
+**Use cases**: `cpt-cypilot-usecase-workspace-info`
+
+**Actors**: `cpt-cypilot-actor-user`, `cpt-cypilot-actor-cypilot-cli`
+
+```mermaid
+sequenceDiagram
+    User->>CLI Proxy: cpt workspace-info
+    CLI Proxy->>Skill Engine: workspace-info command
+    Skill Engine->>Skill Engine: find project root
+    Skill Engine->>Config Manager: locate workspace config
+    alt no workspace found
+        Skill Engine-->>User: ERROR "no workspace config"
+    else workspace found
+        loop each source
+            Skill Engine->>Skill Engine: resolve source path
+            Skill Engine->>Skill Engine: check directory reachability
+            alt reachable
+                Skill Engine->>Skill Engine: probe for adapter directory
+                alt adapter found
+                    Skill Engine->>Config Manager: load artifact metadata
+                    Config Manager-->>Skill Engine: system count, artifact count
+                end
+            else unreachable
+                Skill Engine->>Skill Engine: add warning
+            end
+        end
+        Skill Engine-->>User: JSON {version, config_path, sources[], traceability}
+    end
+```
+
+**Description**: Reports workspace health by resolving each source path, checking reachability, probing for adapters, and loading artifact metadata. Returns a comprehensive status including per-source info (reachability, adapter presence, artifact counts) and workspace-level traceability settings.
+
+#### Workspace Sync
+
+**ID**: `cpt-cypilot-seq-workspace-sync`
+
+**Use cases**: `cpt-cypilot-usecase-workspace-sync`
+
+**Actors**: `cpt-cypilot-actor-user`, `cpt-cypilot-actor-cypilot-cli`
+
+```mermaid
+sequenceDiagram
+    User->>CLI Proxy: cpt workspace-sync [--source <name>] [--force] [--dry-run]
+    CLI Proxy->>Skill Engine: workspace-sync command
+    Skill Engine->>Skill Engine: find project root
+    Skill Engine->>Config Manager: locate workspace config
+    Skill Engine->>Skill Engine: collect Git URL sources (filter by --source if set)
+    alt no Git sources found
+        Skill Engine-->>User: JSON {status: OK, synced: 0}
+    else --dry-run
+        Skill Engine-->>User: preview of sources that would be synced
+    else sync sources
+        loop each Git source
+            Skill Engine->>Git: sync_git_source(url, branch, base_dir)
+            alt sync success
+                Git-->>Skill Engine: synced
+            else sync failure
+                Git-->>Skill Engine: error details
+            end
+        end
+        alt any synced
+            Skill Engine-->>User: JSON {status: OK, synced, failed}
+        else all failed
+            Skill Engine-->>User: JSON {status: FAIL, failed} (exit code 2)
+        end
+    end
+```
+
+**Description**: Fetches and updates Git URL workspace sources. Each source is synced via `cpt-cypilot-algo-workspace-sync-git-source`. Only sources with a configured URL are eligible for sync. The `--source` flag targets a single source. The command reports per-source sync results and fails (exit code 2) only if all sources fail.
+
 ### 3.7 Database schemas & tables
 
 Not applicable — Cypilot does not use a database. All persistent state is stored in the filesystem:
@@ -1123,7 +1310,8 @@ The following design domains are not applicable to Cypilot and are explicitly ex
   - `cpt-cypilot-adr-skill-md-entry-point` — SKILL.md as single agent entry point
   - `cpt-cypilot-adr-structured-id-format` — structured cpt-* ID format with @cpt-* code tags
   - `cpt-cypilot-adr-git-style-conflict-markers` — git-style conflict markers for interactive merge
-- **Features**: [features/](./features/) — `core-infra.md`, `kit-management.md`, `traceability-validation.md`, `agent-integration.md`, `version-config.md`, `developer-experience.md`, `spec-coverage.md`, `v2-v3-migration.md`
+  - `cpt-cypilot-adr-prefer-cpt-cli-for-agents` — prefer `cpt` CLI over direct script invocation in agent prompts; graceful fallback to raw Python path
+- **Features**: [features/](./features/) — `core-infra.md`, `kit-management.md`, `traceability-validation.md`, `agent-integration.md`, `version-config.md`, `developer-experience.md`, `spec-coverage.md`, `v2-v3-migration.md`, `workspace.md`
 
 ### Specifications
 
@@ -1135,3 +1323,4 @@ The following design domains are not applicable to Cypilot and are explicitly ex
 | CDSL | [specs/CDSL.md](./specs/CDSL.md) | `cpt-cypilot-fr-core-cdsl` |
 | Artifacts Registry | [specs/artifacts-registry.md](./specs/artifacts-registry.md) | `cpt-cypilot-fr-core-config`, `cpt-cypilot-component-config-manager` |
 | System Prompts | [specs/sysprompts.md](./specs/sysprompts.md) | `cpt-cypilot-fr-core-config`, `cpt-cypilot-fr-core-workflows` |
+| Workspace (inline) | [DESIGN.md §1.2 Multi-Repo Workspace Federation](#multi-repo-workspace-federation) | `cpt-cypilot-fr-core-workspace`, `cpt-cypilot-fr-core-workspace-git-sources`, `cpt-cypilot-fr-core-workspace-cross-repo-editing`; algorithms: `cpt-cypilot-algo-workspace-resolve-git-url`, `cpt-cypilot-algo-workspace-resolve-adapter-context`, `cpt-cypilot-algo-workspace-determine-target`, `cpt-cypilot-algo-workspace-infer-role` |

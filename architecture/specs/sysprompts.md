@@ -89,25 +89,24 @@ All sysprompt files are optional. Only files referenced in `AGENTS.md` are loade
 
 ## Root AGENTS.md Entry
 
-Cypilot injects a managed block into the **project root** `AGENTS.md` that routes agents to `{cypilot_path}/config/AGENTS.md`:
+Cypilot injects the same managed block into the **project root** `AGENTS.md` and `CLAUDE.md`, exposing only the configured adapter path:
 
-```markdown
+````markdown
 <!-- @cpt:root-agents -->
-ALWAYS open and follow `{cypilot_path}/.gen/AGENTS.md` FIRST
-ALWAYS open and follow `{cypilot_path}/config/AGENTS.md` WHEN it exists
-<!-- @/cpt:root-agents -->
+```toml
+cypilot_path = ".bootstrap"
 ```
+<!-- @/cpt:root-agents -->
+````
 
 **Behavior**:
-- Inserted at the **beginning** of the root `AGENTS.md` file
-- If the file does not exist, it is created
-- The path reflects the actual install directory (e.g., `@/{cypilot_path}/config/AGENTS.md`)
+- Inserted at the **beginning** of the root `AGENTS.md` and `CLAUDE.md` files
+- If a file does not exist, it is created
+- The path reflects the actual install directory via `cypilot_path`
 - Content between the `<!-- @cpt:root-agents -->` and `<!-- @/cpt:root-agents -->` markers is **fully managed** by Cypilot — overwritten on every check
 - Manual edits inside the block are discarded
 
-**Integrity check**: every Cypilot CLI invocation (not just `init`) verifies the block exists and the path is correct. If the block is missing or stale, it is silently re-injected.
-
-This ensures any agent that opens the project is immediately routed to Cypilot's navigation entry point.
+**Integrity check**: every Cypilot CLI invocation (not just `init`) verifies both blocks exist and the path is correct. If a block is missing or stale, it is silently re-injected. This ensures any agent that opens the project is immediately routed to Cypilot's navigation entry point.
 
 ---
 

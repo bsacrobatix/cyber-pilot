@@ -14,7 +14,18 @@ from ..utils import toml_utils
 from ..utils.ui import ui
 
 # Directories to copy from cache into project cypilot/.core/ dir
-COPY_DIRS = ["architecture", "requirements", "schemas", "workflows", "skills"]
+# Full directories (copied entirely)
+COPY_DIRS = ["requirements", "schemas", "workflows", "skills"]
+# Selective items from architecture/ (only specs needed by agents)
+COPY_ARCHITECTURE_ITEMS = [
+    "specs/traceability.md",   # ID formats, code traceability — used by kit rules
+    "specs/CDSL.md",           # Behavioral spec language — referenced by traceability.md
+    "specs/cli.md",            # CLI commands — referenced by traceability.md, kit/rules.md
+    "specs/CLISPEC.md",        # CLI spec (detailed command definitions)
+    "specs/artifacts-registry.md",  # Artifacts config — used by .gen/AGENTS.md
+    "specs/kit/constraints.md",     # Constraints spec — used by ADR, PRD, DESIGN rules
+    "specs/kit/kit.md",             # Kit structure — referenced by kit/rules.md
+]
 COPY_ROOT_DIRS: list[str] = []
 CACHE_DIR = Path.home() / ".cypilot" / "cache"
 CORE_SUBDIR = ".core"
@@ -27,13 +38,37 @@ def _copy_from_cache(cache_dir: Path, target_dir: Path, force: bool = False) -> 
     Core directories go into .core/ (read-only reference content).
     User-editable content lives in config/.
 
+    When force=True, .core/ is fully cleared before copying to ensure no stale
+    files remain from previous versions. This is the mode used by `cpt update`.
+
     Returns dict of {dir_name: action} where action is 'created', 'updated', or 'skipped'.
     """
     core_dir = target_dir / CORE_SUBDIR
-    core_dir.mkdir(parents=True, exist_ok=True)
     results: Dict[str, str] = {}
 
-    def _copy_one(src: Path, dst: Path, name: str) -> None:
+    # Snapshot which directories existed before rmtree so force re-copies
+    # are reported as "updated" rather than "created".
+    pre_force_existed: set = set()
+    if force:
+        for name in COPY_DIRS:
+            if (core_dir / name).exists():
+                pre_force_existed.add(name)
+        for name in COPY_ROOT_DIRS:
+            if (target_dir / name).exists():
+                pre_force_existed.add(name)
+        for item in COPY_ARCHITECTURE_ITEMS:
+            if (core_dir / "architecture" / item).exists():
+                pre_force_existed.add(f"architecture/{item}")
+
+    # Full cleanup of .core/ when force=True (ensures no stale files)
+    # This is the mode used by `cpt update` which always passes force=True
+    if force and core_dir.exists():
+        shutil.rmtree(core_dir)
+
+    core_dir.mkdir(parents=True, exist_ok=True)
+
+    def _copy_dir(src: Path, dst: Path, name: str) -> None:
+        """Copy a directory."""
         if not src.is_dir():
             results[name] = "missing_in_cache"
             return
@@ -44,14 +79,43 @@ def _copy_from_cache(cache_dir: Path, target_dir: Path, force: bool = False) -> 
             shutil.rmtree(dst)
             results[name] = "updated"
         else:
-            results[name] = "created"
+            results[name] = "updated" if force and name in pre_force_existed else "created"
         shutil.copytree(src, dst)
 
+    def _copy_file(src: Path, dst: Path, name: str) -> None:
+        """Copy a single file."""
+        if not src.is_file():
+            results[name] = "missing_in_cache"
+            return
+        if dst.exists():
+            if not force:
+                results[name] = "skipped"
+                return
+            results[name] = "updated"
+        else:
+            results[name] = "updated" if force and name in pre_force_existed else "created"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+    # Copy full directories
     for name in COPY_DIRS:
-        _copy_one(cache_dir / name, core_dir / name, name)
+        _copy_dir(cache_dir / name, core_dir / name, name)
+
+    # Copy selective items from architecture/
+    arch_src = cache_dir / "architecture"
+    arch_dst = core_dir / "architecture"
+    for item in COPY_ARCHITECTURE_ITEMS:
+        src = arch_src / item
+        dst = arch_dst / item
+        if src.is_dir():
+            _copy_dir(src, dst, f"architecture/{item}")
+        elif src.is_file():
+            _copy_file(src, dst, f"architecture/{item}")
+        else:
+            results[f"architecture/{item}"] = "missing_in_cache"
 
     for name in COPY_ROOT_DIRS:
-        _copy_one(cache_dir / name, target_dir / name, name)
+        _copy_dir(cache_dir / name, target_dir / name, name)
 
     return results
 
@@ -66,10 +130,10 @@ def _core_readme() -> str:
         "`cpt init` or `cpt kit install`. They are the read-only reference copies of:\n"
         "\n"
         "- `skills/` — Cypilot skill scripts and CLI entry points\n"
-        "- `architecture/` — architecture specs and feature documents\n"
+        "- `workflows/` — workflow definitions\n"
         "- `requirements/` — validation requirements\n"
         "- `schemas/` — JSON schemas for configuration files\n"
-        "- `workflows/` — workflow definitions\n"
+        "- `architecture/specs/` — traceability, CDSL, CLI, and kit specifications\n"
         "\n"
         "To update these files, run `cpt init --force` or `cpt kit update`.\n"
         "Any manual changes **will be overwritten** on the next update.\n"
@@ -223,22 +287,9 @@ def _compute_managed_block(install_dir: str) -> str:
     # @cpt-begin:cpt-cypilot-algo-core-infra-inject-root-agents:p1:inst-compute-block
     return (
         f"{MARKER_START}\n"
-        f"## Cypilot AI Agent Navigation\n"
-        f"\n"
-        f"**Remember these variables while working in this project:**\n"
-        f"\n"
         f"```toml\n"
         f'cypilot_path = "{install_dir}"\n'
         f"```\n"
-        f"\n"
-        f"## Navigation Rules\n"
-        f"\n"
-        f"ALWAYS open and follow `{{cypilot_path}}/.gen/AGENTS.md` FIRST\n"
-        f"\n"
-        f"ALWAYS open and follow `{{cypilot_path}}/config/AGENTS.md` FIRST\n"
-        f"\n"
-        f"ALWAYS invoke `{{cypilot_path}}/.core/skills/cypilot/SKILL.md` WHEN user asks to do something with Cypilot\n"
-        f"\n"
         f"{MARKER_END}"
     )
     # @cpt-end:cpt-cypilot-algo-core-infra-inject-root-agents:p1:inst-compute-block
@@ -290,38 +341,9 @@ def _inject_root_agents(project_root: Path, install_dir: str, dry_run: bool = Fa
     return _inject_managed_block(project_root / "AGENTS.md", install_dir, dry_run)
 
 # @cpt-begin:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-inject-claude
-def _compute_claude_block() -> str:
-    return (
-        f"{MARKER_START}\n"
-        f"STOP and READ `AGENTS.md` in project root before ANY tool calls or skill invocation\n"
-        f"{MARKER_END}"
-    )
-
 def _inject_root_claude(project_root: Path, install_dir: str, dry_run: bool = False) -> str:
     """Inject or update root CLAUDE.md managed block. Returns action taken."""
-    claude_file = project_root / "CLAUDE.md"
-    expected_block = _compute_claude_block()
-
-    if not claude_file.is_file():
-        if not dry_run:
-            claude_file.write_text(expected_block + "\n", encoding="utf-8")
-        return "created"
-
-    content = claude_file.read_text(encoding="utf-8")
-
-    if MARKER_START in content and MARKER_END in content:
-        start_idx = content.index(MARKER_START)
-        end_idx = content.index(MARKER_END) + len(MARKER_END)
-        current_block = content[start_idx:end_idx]
-        if current_block == expected_block.strip():
-            return "unchanged"
-        new_content = content[:start_idx] + expected_block + content[end_idx:]
-    else:
-        new_content = expected_block + "\n\n" + content
-
-    if not dry_run:
-        claude_file.write_text(new_content, encoding="utf-8")
-    return "updated"
+    return _inject_managed_block(project_root / "CLAUDE.md", install_dir, dry_run)
 # @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-init-inject-claude
 
 def cmd_init(argv: List[str]) -> int:
@@ -445,6 +467,8 @@ def cmd_init(argv: List[str]) -> int:
         copy_results = _copy_from_cache(CACHE_DIR, cypilot_dir, force=args.force)
     else:
         copy_results = {d: "dry_run" for d in COPY_DIRS}
+        for item in COPY_ARCHITECTURE_ITEMS:
+            copy_results[f"architecture/{item}"] = "dry_run"
     actions["copy"] = json.dumps(copy_results)
     # @cpt-end:cpt-cypilot-flow-core-infra-project-init:p1:inst-copy-skill
 

@@ -847,7 +847,7 @@ class TestInjectRootClaude(unittest.TestCase):
     """Test _inject_root_claude update/insert paths."""
 
     def test_update_existing_block(self):
-        from cypilot.commands.init import _inject_root_claude, _compute_claude_block, MARKER_START, MARKER_END
+        from cypilot.commands.init import _inject_root_claude, MARKER_START, MARKER_END
         with TemporaryDirectory() as td:
             root = Path(td)
             claude = root / "CLAUDE.md"
@@ -871,11 +871,11 @@ class TestInjectRootClaude(unittest.TestCase):
             self.assertIn("Existing content", content)
 
     def test_unchanged_block(self):
-        from cypilot.commands.init import _inject_root_claude, _compute_claude_block
+        from cypilot.commands.init import _inject_root_claude, _compute_managed_block
         with TemporaryDirectory() as td:
             root = Path(td)
             claude = root / "CLAUDE.md"
-            claude.write_text(_compute_claude_block() + "\n")
+            claude.write_text(_compute_managed_block("cypilot") + "\n")
             action = _inject_root_claude(root, "cypilot")
             self.assertEqual(action, "unchanged")
 

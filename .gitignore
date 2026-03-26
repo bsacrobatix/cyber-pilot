@@ -51,3 +51,5 @@ cypilot-flow-layers-2a.drawio.svg
 /tmp
 Cypilot.code-workspace
 Spaider.code-workspace
+.prs/
+.claude/settings.local.json

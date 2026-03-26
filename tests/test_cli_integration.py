@@ -468,24 +468,36 @@ class TestCLIAgentsCommand(unittest.TestCase):
             content = skill_file.read_text(encoding="utf-8")
             self.assertRegex(content, r"(?m)^description:\s+\".*\"\s*$", msg="description not quoted in windsurf skill output")
 
-    def test_agents_claude_workflow_description_is_quoted(self):
-        """Test claude workflow proxies render description in quoted YAML frontmatter."""
+    def test_agents_claude_skill_description_is_quoted(self):
+        """Test claude skill files render description in quoted YAML frontmatter."""
         with TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             (root / ".git").mkdir()
             self._write_minimal_cypilot_skill(root)
             self._write_workflows_with_frontmatter(root)
+            legacy_commands = root / ".claude" / "commands"
+            legacy_commands.mkdir(parents=True)
+            (legacy_commands / "cypilot-generate.md").write_text(
+                "# /cypilot-generate\n\nALWAYS open and follow `{cypilot_path}/.core/workflows/generate.md`\n",
+                encoding="utf-8",
+            )
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 exit_code = main(["generate-agents", "--agent", "claude", "--root", str(root), "--cypilot-root", str(root)])
             self.assertEqual(exit_code, 0)
+            out = json.loads(stdout.getvalue())
 
-            # One of the generated workflow command proxies should contain quoted description
-            proxy = root / ".claude" / "commands" / "cypilot-generate.md"
-            self.assertTrue(proxy.exists())
-            txt = proxy.read_text(encoding="utf-8")
-            self.assertRegex(txt, r"(?m)^description:\s+\".*\"\s*$", msg="description not quoted in claude workflow proxy")
+            # One of the generated skill files should contain quoted description
+            skill = root / ".claude" / "skills" / "cypilot-generate" / "SKILL.md"
+            self.assertTrue(skill.exists())
+            txt = skill.read_text(encoding="utf-8")
+            self.assertRegex(txt, r"(?m)^description:\s+\".*\"\s*$", msg="description not quoted in claude skill file")
+
+            agent_r = out.get("results", {}).get("claude", out)
+            deleted = set(agent_r.get("skills", {}).get("deleted", []))
+            self.assertIn(".claude/commands/cypilot-generate.md", deleted)
+            self.assertFalse((legacy_commands / "cypilot-generate.md").exists())
 
     def test_agents_dry_run_does_not_write_files(self):
         """Test agents command dry-run mode."""
@@ -1360,8 +1372,6 @@ class TestCLIAgentsAtPathFormat(unittest.TestCase):
                 ".windsurf/workflows/cypilot.md",
             ],
             "claude": [
-                ".claude/commands/cypilot-generate.md",
-                ".claude/commands/cypilot.md",
                 ".claude/skills/cypilot/SKILL.md",
                 ".claude/skills/cypilot-generate/SKILL.md",
             ],

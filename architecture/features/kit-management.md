@@ -24,6 +24,7 @@
   - [Kit Diff Display](#kit-diff-display)
   - [Kit Conflict Merge](#kit-conflict-merge)
   - [Kit TOC Handling](#kit-toc-handling)
+  - [Kit Whatsnew Display](#kit-whatsnew-display)
   - [Kit Snapshot](#kit-snapshot)
   - [Kit Validation Engine](#kit-validation-engine)
   - [Kit Validate by Path](#kit-validate-by-path)
@@ -107,10 +108,11 @@ Enables users to install, update, and validate kit packages with interactive fil
 2. [x] - `p1` - Validate kit source directory exists - `inst-validate-source`
 3. [x] - `p1` - Read slug from source conf.toml - `inst-read-slug`
 4. [x] - `p1` - Resolve project root and cypilot directory - `inst-resolve-project`
-5. [x] - `p1` - **IF** kit source contains `manifest.toml` and existing install has no resource bindings: trigger legacy install migration via `cpt-cypilot-algo-kit-manifest-legacy-migration` - `inst-legacy-migration`
-6. [x] - `p1` - Delegate to `update_kit()` with interactive/auto_approve/force flags - `inst-delegate-update`
-7. [x] - `p1` - Regenerate `.gen/` aggregates (unless dry-run) - `inst-regen-gen`
-8. [x] - `p1` - Format version status, accepted/declined files, and output result - `inst-format-output`
+5. [x] - `p1` - **IF** kit source contains `whatsnew.toml`: display whatsnew entries via `cpt-cypilot-algo-kit-whatsnew-display`; in interactive mode prompt to continue or abort - `inst-show-whatsnew`
+6. [x] - `p1` - **IF** kit source contains `manifest.toml` and existing install has no resource bindings: trigger legacy install migration via `cpt-cypilot-algo-kit-manifest-legacy-migration` - `inst-legacy-migration`
+7. [x] - `p1` - Delegate to `update_kit()` with interactive/auto_approve/force flags - `inst-delegate-update`
+8. [x] - `p1` - Regenerate `.gen/` aggregates (unless dry-run) - `inst-regen-gen`
+9. [x] - `p1` - Format version status, accepted/declined files, and output result - `inst-format-output`
 
 ### Kit Validate CLI
 
@@ -330,6 +332,28 @@ Enables users to install, update, and validate kit packages with interactive fil
 **Supporting**:
 - [x] - `p1` - TOC marker constants and heading regex patterns - `inst-toc-datamodel`
 
+### Kit Whatsnew Display
+
+- [x] `p1` - **ID**: `cpt-cypilot-algo-kit-whatsnew-display`
+
+**Input**: Kit source directory (containing `whatsnew.toml`), installed kit version from `core.toml`, interactive flag
+
+**Output**: Displayed whatsnew entries, user acknowledgment (bool)
+
+**Steps**:
+1. [x] - `p1` - Read `whatsnew.toml` from kit source directory; **IF** not present, return True (no-op) - `inst-read-whatsnew`
+2. [x] - `p1` - Read installed kit version from `core.toml` (`kits.{slug}.version`); **IF** not installed, treat as version "0.0.0" - `inst-read-installed-version`
+3. [x] - `p1` - Filter entries: keep all versions greater than installed version - `inst-filter-versions`
+4. [x] - `p1` - **IF** no new entries: return True (no-op) - `inst-check-no-new`
+5. [x] - `p1` - Sort filtered entries by version (ascending, using semantic version comparison) - `inst-sort-versions`
+6. [x] - `p1` - Display entries to stderr with ANSI formatting (when stderr is TTY); show version, summary, and details for each entry - `inst-display-entries`
+7. [x] - `p1` - **IF** interactive mode: prompt user "Press Enter to continue with update (or 'q' to abort)"; **IF** user aborts, return False - `inst-prompt-continue`
+8. [x] - `p1` - **RETURN** True (acknowledged) - `inst-return-ack`
+
+**Supporting**:
+- [x] - `p1` - Semantic version comparison helper (parse `X.Y.Z` and compare) - `inst-whatsnew-version-cmp`
+- [x] - `p1` - ANSI formatting helper for summary and details text (bold version, cyan code spans) - `inst-whatsnew-format`
+
 ### Kit Snapshot
 
 - [x] `p1` - **ID**: `cpt-cypilot-algo-kit-snapshot`
@@ -501,6 +525,7 @@ Enables users to install, update, and validate kit packages with interactive fil
 5. [x] - `p1` - Editor merge uses git-style conflict markers
 6. [x] - `p1` - **IF** manifest-driven kit with resource bindings: files are updated at their registered paths, not default `config/kits/{slug}/` paths
 7. [x] - `p1` - **IF** manifest-driven kit: new resources (in manifest but not in `core.toml` bindings) trigger path prompt and are registered
+8. [x] - `p1` - **IF** kit source contains `whatsnew.toml`: display new version entries before file-level diff; user can abort update after reviewing
 
 ### Kit Validate Checks Integrity
 
@@ -521,6 +546,7 @@ Enables users to install, update, and validate kit packages with interactive fil
 | `skills/cypilot/scripts/cypilot/utils/manifest.py` | `cpt-cypilot-algo-kit-manifest-resolve`, `cpt-cypilot-algo-kit-manifest-source-mapping` |
 | `skills/cypilot/scripts/cypilot/utils/diff_engine.py` | `cpt-cypilot-algo-kit-file-update`, `cpt-cypilot-algo-kit-file-enumerate`, `cpt-cypilot-algo-kit-file-classify`, `cpt-cypilot-algo-kit-interactive-review`, `cpt-cypilot-algo-kit-diff-display`, `cpt-cypilot-algo-kit-conflict-merge`, `cpt-cypilot-algo-kit-toc-handling`, `cpt-cypilot-algo-kit-snapshot` |
 | `skills/cypilot/scripts/cypilot/commands/validate_kits.py` | `cpt-cypilot-algo-kit-validate`, `cpt-cypilot-algo-kit-validate-by-path`, `cpt-cypilot-flow-kit-validate-cli` |
+| `skills/cypilot/scripts/cypilot/utils/whatsnew.py` | `cpt-cypilot-algo-kit-whatsnew-display` |
 
 ---
 
@@ -535,4 +561,5 @@ Enables users to install, update, and validate kit packages with interactive fil
 - [ ] `p1` - `.gen/AGENTS.md` and `.gen/SKILL.md` are regenerated after install/update
 - [ ] `p1` - File-level diff correctly handles TOC stripping, conflict merging, and editor integration
 - [ ] `p1` - `cpt info` outputs resolved resource variables for manifest-driven kits
+- [x] `p1` - `cpt kit update` displays whatsnew entries from kit's `whatsnew.toml` before file-level diff (versions > installed version)
 - [ ] `p1` - All CDSL instructions have corresponding `@cpt-begin`/`@cpt-end` markers in code

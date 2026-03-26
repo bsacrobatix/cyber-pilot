@@ -17,6 +17,10 @@
   - [2.9 Advanced SDLC Workflows (EXTRACTED) ⏳ LOW](#29-advanced-sdlc-workflows-extracted--low)
   - [2.10 V2 → V3 Migration ⏳ HIGH](#210-v2--v3-migration--high)
   - [2.11 Spec Coverage ⏳ HIGH](#211-spec-coverage--high)
+  - [2.12 Execution Plans ✅ HIGH](#212-execution-plans--high)
+  - [2.13 Multi-Repo Workspace Federation ✅ DONE](#213-multi-repo-workspace-federation--done)
+  - [2.14 Subagent Registration ⏳ HIGH](#214-subagent-registration--high)
+  - [2.15 Project-Level Extensibility ⏳ HIGH](#215-project-level-extensibility--high)
 - [3. Feature Dependencies](#3-feature-dependencies)
 
 <!-- /toc -->
@@ -29,7 +33,7 @@ Cypilot DESIGN is decomposed into features organized around architectural layers
 - Features grouped by architectural layer and functional cohesion (related components together)
 - Dependencies minimize coupling between features — each feature is independently implementable given its dependencies
 - SDLC-specific features (F4, F6, F9) have been **extracted** to the SDLC kit repository (`cyberfabric/cyber-pilot-kit-sdlc`) per `cpt-cypilot-adr-extract-sdlc-kit`
-- Core features (F1–F3, F5, F7–F8, F10–F11) cover all core functional requirements
+- Core features (F1–F3, F5, F7–F8, F10–F13) cover all core functional requirements
 
 
 ## 2. Entries
@@ -543,6 +547,231 @@ Cypilot DESIGN is decomposed into features organized around architectural layers
   - Registered codebase entries from `{cypilot_path}/config/artifacts.toml`
 
 
+### 2.12 [Execution Plans](features/execution-plans.md) ✅ HIGH
+
+- [x] `p1` - **ID**: `cpt-cypilot-feature-execution-plans`
+
+- **Purpose**: Decompose large agent tasks into self-contained phase files that fit within a single LLM context window, eliminating context overflow and non-deterministic results from attention drift.
+
+- **Depends On**: `cpt-cypilot-feature-agent-integration`
+
+- **Scope**:
+  - Plan workflow (`workflows/plan.md`): instructions for AI agents to decompose tasks into phases and generate self-contained phase files
+  - Phase file template (`requirements/plan-template.md`): strict structure for generated phase files — TOML frontmatter, inlined rules, pre-resolved paths, binary acceptance criteria
+  - Decomposition strategies (`requirements/plan-decomposition.md`): how to split tasks by type — generate (template sections), analyze (checklist categories), implement (CDSL blocks)
+  - Budget enforcement: ≤500 lines target, ≤1000 lines max per phase file
+  - Plan storage: `{cypilot_path}/.plans/{task-slug}/` directory (git-ignored) with `plan.toml` manifest and phase files
+  - Phase execution: agent reads self-contained phase file, follows instructions, reports against acceptance criteria
+  - Status tracking: `plan.toml` tracks phase lifecycle (pending → in_progress → done/failed)
+
+- **Out of scope**:
+  - CLI commands for plan management (pure prompt-level feature)
+  - Modifications to existing generate.md or analyze.md workflows
+  - Deterministic validation of phase files (phase files are ephemeral execution artifacts)
+
+- **Requirements Covered**:
+
+  - `p1` - `cpt-cypilot-fr-core-execution-plans`
+  - `p1` - `cpt-cypilot-fr-core-workflows`
+
+- **Design Principles Covered**:
+
+  - `p1` - `cpt-cypilot-principle-determinism-first`
+  - `p1` - `cpt-cypilot-principle-occams-razor`
+
+- **Design Constraints Covered**:
+
+  - `p1` - `cpt-cypilot-constraint-markdown-contract`
+
+- **Domain Model Entities**:
+  - ExecutionPlan
+  - Phase
+  - PhaseFile
+
+- **Design Components**:
+
+  Components reused from Feature 5 (`workflow-engine` via generate/analyze patterns)
+
+- **API**:
+  None (prompt-level feature — no CLI commands)
+
+- **Sequences**:
+
+  None (agent-driven workflow)
+
+- **Data**:
+  - `{cypilot_path}/.plans/{task-slug}/plan.toml` — plan manifest with phase metadata and status
+  - `{cypilot_path}/.plans/{task-slug}/phase-{NN}-{slug}.md` — self-contained phase files
+
+
+### 2.13 [Multi-Repo Workspace Federation](features/workspace.md) ✅ DONE
+
+- [x] `p1` - **ID**: `cpt-cypilot-feature-workspace`
+
+- **Purpose**: Enable multi-repo workspace federation — discover repos in nested sub-directories, configure sources, generate workspace config, and provide cross-repo artifact traceability without merging adapters.
+
+- **Depends On**: `cpt-cypilot-feature-core-infra`, `cpt-cypilot-feature-traceability-validation`
+
+- **Scope**:
+  - Workspace configuration: standalone `.cypilot-workspace.toml` or inline `[workspace]` section in `config/core.toml`
+  - Source discovery: scan nested sub-directories for repos with `.git` or `AGENTS.md` marker, infer roles (artifacts/codebase/kits/full)
+  - Workspace config discovery: check the `core.toml` `workspace` key first (string path or inline dict), then fall back to `.cypilot-workspace.toml` at the project root
+  - Context upgrade: `CypilotContext` → `WorkspaceContext` with `SourceContext` per source
+  - Cross-repo artifact path resolution: `resolve_artifact_path` returns `Optional[Path]`, `None` when source is explicitly set but unreachable
+  - Traceability settings: `cross_repo` + `resolve_remote_ids` flags controlling remote ID expansion
+  - CLI commands: `workspace-init`, `workspace-add` (with `--inline` flag for inline mode), `workspace-info`, `workspace-sync`
+  - `--local-only` flag for validate to skip cross-repo resolution
+  - `--source` filter for `list-ids`
+  - Graceful degradation: unreachable sources emit warnings, operations continue with available sources
+  - Scan warning logging: stderr warnings for individual artifact scan failures
+  - Git URL sources in standalone workspace config: remote Git repository URLs with working directory configuration, namespace resolution rules (e.g., `gitlab.com/org/repo.git` → `org/repo`), and per-source branch/ref pinning (`cpt-cypilot-fr-core-workspace-git-sources`)
+  - Cross-repo editing with remote adapter context: when editing files in a remote source, apply that source's own adapter rules/templates/constraints instead of the primary repo's adapter (`cpt-cypilot-fr-core-workspace-cross-repo-editing`)
+
+- **Requirements Covered**:
+
+  - [x] `p1` - `cpt-cypilot-fr-core-workspace`
+  - [x] `p1` - `cpt-cypilot-fr-core-traceability`
+  - [x] `p1` - `cpt-cypilot-fr-core-workspace-git-sources`
+  - [x] `p1` - `cpt-cypilot-fr-core-workspace-cross-repo-editing`
+
+- **Design Principles Covered**:
+
+  - [x] `p1` - `cpt-cypilot-principle-traceability-by-design`
+  - [x] `p1` - `cpt-cypilot-principle-determinism-first`
+  - [x] `p1` - `cpt-cypilot-principle-zero-harm`
+
+- **Design Constraints Covered**:
+
+  - [x] `p1` - `cpt-cypilot-constraint-python-stdlib`
+
+- **Domain Model Entities**:
+  - WorkspaceConfig
+  - SourceEntry
+  - TraceabilityConfig
+  - ResolveConfig
+  - NamespaceRule
+  - SourceContext
+  - WorkspaceContext
+
+- **Design Components**:
+
+  - [x] `p1` - `cpt-cypilot-component-config-manager`
+  - [x] `p1` - `cpt-cypilot-component-traceability-engine`
+
+- **API**:
+  - `cpt workspace-init [--root DIR] [--output PATH] [--inline] [--force] [--dry-run]`
+  - `cpt workspace-add --name N (--path P | --url U) [--branch B] [--role R] [--adapter A] [--inline]`
+  - `cpt workspace-info`
+  - `cpt workspace-sync [--source NAME] [--dry-run]`
+  - `cpt validate --local-only`
+  - `cpt validate --source <name>`
+  - `cpt list-ids --source <name>`
+
+- **Sequences**:
+
+  None (workspace setup is a configuration flow)
+
+- **Out of scope**:
+  - Cross-repo merge conflict resolution
+  - Automatic workspace discovery across machines or CI environments
+  - Authentication and credential management for Git URL sources
+
+- **Data**:
+  - `.cypilot-workspace.toml` — standalone workspace configuration
+  - `config/core.toml` `[workspace]` section — inline workspace configuration
+  - `config/artifacts.toml` `source` fields — per-artifact source references
+
+
+### 2.14 [Subagent Registration](features/subagent-registration.md) ⏳ HIGH
+
+- [x] `p1` - **ID**: `cpt-cypilot-feature-subagent-registration`
+
+- **Purpose**: Allow Cypilot to register and generate subagent definitions that delegate specialized tasks to lightweight, tool-scoped agents.
+
+- **Scope**:
+  - Subagent definition format and registration
+  - Subagent generation per agent tool
+  - Model and tool scoping for subagents
+
+- **Out of scope**:
+  - Project-level subagent overrides (handled by Project-Level Extensibility)
+
+- **Domain Model Entities**:
+  - SubagentDefinition
+  - SubagentConfig
+
+- **API**:
+  - `cypilot generate-agents --agent <tool>`
+
+
+### 2.15 [Project-Level Extensibility](features/project-extensibility.md) ⏳ HIGH
+
+- [ ] `p1` - **ID**: `cpt-cypilot-feature-project-extensibility`
+
+- **Purpose**: Extend `cpt generate-agents` with a four-layer manifest hierarchy (Core → Kit → Master Repo → Repo), enabling projects and orchestrator repos to declare skills, agents, workflows, and rules via `manifest.toml`. Adds `includes` directive for subdirectory manifests, `[[skills]]` generation, extended agent schema (tools, color, memory_dir, model passthrough), section appending for template composition, provenance traceability, and fully deterministic assembly pipeline.
+
+- **Depends On**: `cpt-cypilot-feature-agent-integration`, `cpt-cypilot-feature-blueprint-system`, `cpt-cypilot-feature-subagent-registration`
+
+- **Scope**:
+  - Manifest v2.0 schema: `[[agents]]`, `[[skills]]`, `[[workflows]]`, `[[rules]]` component sections (`[[hooks]]` and `[[permissions]]` are reserved in the schema but deferred to a follow-up feature and are not in scope here)
+  - `includes` directive for subdirectory manifests (same-layer, max depth 3, circular detection)
+  - Four-layer walk-up discovery: Core → Kit → Master Repo → Repo (Organization and Project layers deferred)
+  - Inner-scope-wins merge semantics across all layers
+  - Extended agent schema: `tools`, `disallowed_tools`, `color`, `memory_dir`, model passthrough
+  - Cross-agent translation including OpenAI Codex (`sandbox_mode`, `developer_instructions`)
+  - `[[skills]]` generation code path (coexists with kit-composed skills)
+  - Section appending for template composition (full block-based composition deferred)
+  - Layer variable resolution: `{base_dir}`, `{master_repo}`, `{repo}`
+  - Provenance traceability: `--show-layers` flag showing per-component winning layer and overridden layers
+  - Deterministic pipeline: zero LLM calls, byte-identical output for same inputs
+  - Component auto-discovery: `--discover` flag scans conventional directories
+  - Backward compatibility: v1 manifests and `agents.toml` fallback
+
+- **Out of scope**:
+  - Master repo bootstrapping and structure conventions (orchestrator-specific)
+  - Kit-specific component definitions (owned by individual kits)
+
+- **Requirements Covered**:
+
+  - `p1` - `cpt-cypilot-fr-core-agents`
+  - `p1` - `cpt-cypilot-fr-core-kits`
+  - `p1` - `cpt-cypilot-fr-core-kit-manifest`
+
+- **Design Principles Covered**:
+
+  - `p1` - `cpt-cypilot-principle-plugin-extensibility`
+  - `p1` - `cpt-cypilot-principle-kit-centric`
+  - `p1` - `cpt-cypilot-principle-dry`
+  - `p1` - `cpt-cypilot-principle-determinism-first`
+
+- **Design Constraints Covered**:
+
+  - `p1` - `cpt-cypilot-constraint-python-stdlib`
+  - `p1` - `cpt-cypilot-constraint-cross-platform`
+
+- **Domain Model Entities**:
+  - Manifest
+  - ManifestLayer
+  - MergedComponents
+  - ProvenanceReport
+
+- **Design Components**:
+
+  - `p1` - `cpt-cypilot-component-agent-generator`
+  - `p1` - `cpt-cypilot-component-kit-manager`
+
+- **API**:
+  - `cpt generate-agents --agent <agent> [--discover] [--show-layers]`
+
+- **Sequences**:
+
+  None (extends existing `cpt-cypilot-seq-generate-workflow`)
+
+- **Data**:
+  - `manifest.toml` at each layer (kit, master repo, org, project, repo)
+  - Layer path variables in resolved variable dict
+
+
 ---
 
 ## 3. Feature Dependencies
@@ -552,7 +781,12 @@ cpt-cypilot-feature-core-infra
     ↓
     ├─→ cpt-cypilot-feature-blueprint-system (Kit Management)
     │
-    ├─→ cpt-cypilot-feature-agent-integration
+    ├─→ cpt-cypilot-feature-agent-integration ─┬─→ cpt-cypilot-feature-execution-plans
+    │                                          │
+    │                                          ├─→ cpt-cypilot-feature-subagent-registration
+    │                                          │
+    │                                          ↓
+    │   cpt-cypilot-feature-project-extensibility ←── cpt-cypilot-feature-blueprint-system
     │
     ├─→ cpt-cypilot-feature-version-config
     │
@@ -562,7 +796,9 @@ cpt-cypilot-feature-core-infra
     │    │
     │    └─→ cpt-cypilot-feature-spec-coverage
     │
-    └─→ cpt-cypilot-feature-v2-v3-migration ←── cpt-cypilot-feature-traceability-validation
+    ├─→ cpt-cypilot-feature-v2-v3-migration ←── cpt-cypilot-feature-traceability-validation
+    │
+    └─→ cpt-cypilot-feature-workspace ←── cpt-cypilot-feature-traceability-validation
 
     (EXTRACTED to cyberfabric/cyber-pilot-kit-sdlc:)
     cpt-cypilot-feature-sdlc-kit
@@ -574,7 +810,9 @@ cpt-cypilot-feature-core-infra
 
 - `cpt-cypilot-feature-traceability-validation` requires `cpt-cypilot-feature-core-infra`: validator needs config manager for system/artifact resolution
 - `cpt-cypilot-feature-agent-integration` requires `cpt-cypilot-feature-core-infra`: agent generator consumes kit SKILL.md and workflow files
+- `cpt-cypilot-feature-execution-plans` requires `cpt-cypilot-feature-agent-integration`: plan workflow builds on existing generate/analyze workflows and agent entry points
 - `cpt-cypilot-feature-version-config` requires `cpt-cypilot-feature-core-infra`: update command needs config migration
 - `cpt-cypilot-feature-developer-experience` requires `cpt-cypilot-feature-traceability-validation`: VS Code plugin and doctor delegate to validator and traceability engine
 - `cpt-cypilot-feature-v2-v3-migration` requires `cpt-cypilot-feature-core-infra` and `cpt-cypilot-feature-traceability-validation`: migration needs v3 infrastructure and validation to verify completeness
+- `cpt-cypilot-feature-workspace` requires `cpt-cypilot-feature-core-infra` and `cpt-cypilot-feature-traceability-validation`: workspace federation builds on core context loading and extends cross-repo ID resolution in the traceability engine
 - SDLC-specific features (F4, F6, F9) have been extracted to `cyberfabric/cyber-pilot-kit-sdlc` per `cpt-cypilot-adr-extract-sdlc-kit`

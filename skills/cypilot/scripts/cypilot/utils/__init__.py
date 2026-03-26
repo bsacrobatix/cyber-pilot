@@ -68,6 +68,10 @@ from .context import (
     ensure_context,
 )
 
+from .layer_discovery import (
+    discover_layers,
+)
+
 __all__ = [
     # File operations
     "cfg_get_str",
@@ -119,4 +123,6 @@ __all__ = [
     "get_context",
     "set_context",
     "ensure_context",
+    # Layer discovery
+    "discover_layers",
 ]
